@@ -1,0 +1,112 @@
+@import "./tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Reset / base ─────────────────────────────────────────────── */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Inter", system-ui, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow: hidden; /* the shell owns its own scroll regions */
+    user-select: none; /* desktop-app feel; inputs re-enable it below */
+  }
+
+  input,
+  textarea {
+    user-select: text;
+  }
+
+  /*
+   * Ambient backdrop. Two soft, off-screen accent pools (raspberry + purple)
+   * over matte black. This is what gives the frosted panels something to
+   * blur — without it, glass on flat black looks like plain dark cards.
+   */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(
+        60% 50% at 12% 0%,
+        rgba(var(--raspberry-rgb), 0.14),
+        transparent 70%
+      ),
+      radial-gradient(
+        55% 45% at 100% 100%,
+        rgba(var(--purple-rgb), 0.12),
+        transparent 70%
+      ),
+      var(--bg);
+  }
+
+  /* Thin, quiet scrollbars that fit the aesthetic. */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.16);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* ── Reusable design-system utilities ─────────────────────────── */
+@layer components {
+  /* Frosted glass surface — the primitive behind <GlassPanel>. */
+  .glass {
+    background: var(--surface);
+    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    box-shadow: var(--hairline), var(--shadow-panel);
+    border-radius: var(--radius);
+  }
+
+  /* Numbers, latency, metrics — mono everywhere it counts. */
+  .mono {
+    font-family: "JetBrains Mono", "Cascadia Code", monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  /* Focus ring that matches the brand instead of the browser default. */
+  .focus-ring:focus-visible {
+    outline: none;
+    box-shadow:
+      var(--hairline),
+      0 0 0 2px rgba(var(--raspberry-rgb), 0.55);
+  }
+}
+
+/* Respect the OS reduced-motion setting (spec §16: accessibility). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

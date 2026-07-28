@@ -1,0 +1,50 @@
+/*
+ * Raspberry design tokens — single source of truth.
+ * Section 5 of the spec is locked; the first block is copied verbatim.
+ * Everything else (spacing, motion, layout rails) derives from it.
+ */
+
+:root {
+  /* ── Locked palette (spec §5) ─────────────────────────────── */
+  --bg: #0a0a0b; /* matte black */
+  --surface: rgba(20, 20, 24, 0.6); /* frosted glass panel */
+  --surface-hi: rgba(30, 30, 36, 0.75);
+  --raspberry: #e11d48; /* primary accent */
+  --raspberry-hi: #fb2c50;
+  --purple: #7c3aed; /* secondary accent */
+  --text: #f5f5f7;
+  --text-dim: #8a8a94;
+  --stroke: rgba(255, 255, 255, 0.08);
+  --glow: 0 0 24px rgba(225, 29, 72, 0.25);
+
+  /* ── Derived accents (rgb channels for alpha compositing) ─── */
+  --raspberry-rgb: 225, 29, 72;
+  --purple-rgb: 124, 58, 237;
+
+  /* ── Glass mechanics ──────────────────────────────────────── */
+  --glass-blur: 24px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 22px;
+  --shadow-panel: 0 8px 40px rgba(0, 0, 0, 0.45);
+  --hairline: inset 0 0 0 1px var(--stroke);
+
+  /* ── Layout rails ─────────────────────────────────────────── */
+  --topbar-h: 52px;
+  --statusbar-h: 30px;
+  --rail-w: 60px; /* collapsed icon rail */
+  --rail-w-open: 232px; /* expanded on hover */
+
+  /* ── Motion (spec §5: 120–160ms ease-out on hover) ────────── */
+  --dur-fast: 130ms;
+  --dur-normal: 220ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Spacing rhythm ───────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+}

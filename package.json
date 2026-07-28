@@ -1,0 +1,16 @@
+{
+  "name": "raspberry",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Raspberry — one glass panel, every machine on your LAN. Phase 1: shell & design system.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @raspberry/hub",
+    "build": "npm run build -w @raspberry/hub",
+    "preview": "npm run preview -w @raspberry/hub",
+    "tauri:dev": "npm run tauri dev -w @raspberry/hub",
+    "tauri:build": "npm run tauri build -w @raspberry/hub"
+  }
+}
