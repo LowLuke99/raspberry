@@ -2,11 +2,17 @@
 
 > One glass panel, every machine on your LAN. Minimal surface, deep power.
 
-**Phase 1 — Shell & Design System.** This is the visual skeleton only: matte-black
-glass UI, design tokens, top bar, collapsible sidebar rail, routed (empty) module
-panels, bottom status bar, and a `Ctrl+K` command palette. **No system
-functionality yet** — everything is localhost + clearly-labelled mock data. Real
-stats, terminal, networking, and the agent arrive in Phase 2+.
+**Phase 1 — Shell & Design System** ✅ — matte-black glass UI, design tokens, top
+bar, collapsible sidebar rail, routed module panels, status bar, `Ctrl+K` palette.
+
+**Phase 2 — Local Core** ✅ — a shared Rust `crates/core` (sysinfo) exposed to the
+frontend through Tauri commands (`LocalTarget`). **System Monitor, Process
+Explorer, Graphs, and Files now show real, live data** from the local machine in
+the native app. The browser preview (`npm run dev`) uses a `MockTarget` so it
+still runs without Rust — each panel shows a **LIVE** (native) or **SAMPLE**
+(browser) badge so you always know which you're looking at.
+
+Next: Phase 3 — the built-in terminal (xterm.js + PTY).
 
 ---
 
@@ -24,24 +30,25 @@ npm run dev
 
 Then open **http://localhost:5173**.
 
-### Native window (the real Tauri app)
+### Native window (the real Tauri app — real system data)
 
-The matte-black desktop window is compiled by Rust. Two one-time prerequisites:
+Prerequisites are already installed on this machine (Rust + the MSVC C++ build
+tools + WebView2), and the raspberry app icon is generated
+(`apps/hub/src-tauri/icons/`, from `app-icon.svg` via `npm run tauri icon`).
 
-1. **Install Rust** — https://rustup.rs (plus the WebView2 runtime, which ships
-   with Windows 11).
-2. **Generate app icons** (Tauri needs them to bundle):
-   ```bash
-   cd raspberry/apps/hub
-   npm run tauri icon path/to/a-1024x1024.png
-   ```
-
-Then, from `raspberry/`:
+From `raspberry/`:
 
 ```bash
-npm run tauri:dev     # dev window with hot reload
-npm run tauri:build   # production installer
+npm run tauri:dev     # dev window with hot reload + live system stats
+npm run tauri:build   # production installer (.msi / .exe)
 ```
+
+> First `tauri:dev` compiles the Rust dependency tree (~400 crates, a few
+> minutes). Subsequent runs are incremental and fast.
+
+To reproduce the toolchain elsewhere: install Rust from https://rustup.rs and the
+"Desktop development with C++" workload (MSVC + Windows SDK), then regenerate
+icons with `npm run tauri icon apps/hub/src-tauri/app-icon.svg` from `apps/hub`.
 
 ---
 
@@ -65,18 +72,37 @@ npm run tauri:build   # production installer
 ```
 raspberry/
 ├─ package.json            # npm workspace root (dev / build / tauri scripts)
+├─ Cargo.toml              # Rust workspace (core + hub; agent joins later)
+├─ crates/
+│  └─ core/                # SHARED system access (sysinfo): stats, process, files
+│     └─ src/              #   Monitor + stats.rs / process.rs / files.rs
 └─ apps/
    └─ hub/                 # the Tauri app
-      ├─ src/              # React frontend (Phase 1 lives here)
+      ├─ src/              # React frontend
       │  ├─ styles/        # tokens.css (§5) + global.css (ambient backdrop)
-      │  ├─ ui/            # design system: GlassPanel, IconButton, Logo, placeholder
+      │  ├─ ui/            # GlassPanel, LiveChart, Meter, PanelShell, IconButton, …
       │  ├─ layout/        # TopBar, Sidebar, Workspace, StatusBar, MachineChip, AppShell
-      │  ├─ modules/       # registry + types + manifests (the 12 tools + Command Deck)
+      │  ├─ modules/       # registry + manifests; system-monitor/ process-explorer/ graphs/ files/
+      │  ├─ target/        # Target abstraction: LocalTarget (invoke) + MockTarget (browser)
+      │  ├─ hooks/         # usePolling, useSeries
       │  ├─ command/       # Ctrl+K palette + tunable match/rank
       │  ├─ state/         # Zustand shell store
-      │  └─ lib/           # cn() helper + mock.ts (all fake data, one place)
-      └─ src-tauri/        # Rust: frameless window, config, capabilities
+      │  └─ lib/           # cn(), format(), mock.ts
+      └─ src-tauri/        # Rust: window + Tauri commands bridging core, icons, config
 ```
+
+### How a module gets real data (§12 transport abstraction)
+
+Every module talks to a `Target`, never directly to the OS:
+
+```
+Module → target.systemSnapshot() ──┬─ LocalTarget  → invoke("system_snapshot") → Rust core (localhost)
+                                    └─ MockTarget   → believable fake data (browser preview)
+```
+
+`src/target/index.ts` picks `LocalTarget` inside Tauri and `MockTarget` in a
+plain browser. Phase 5 adds `RemoteTarget` (mTLS WebSocket to an Agent) behind
+the same interface — modules won't change.
 
 ### Adding a module later
 

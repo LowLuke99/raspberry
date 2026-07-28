@@ -1,0 +1,20 @@
+# Rust workspace for Raspberry. Coexists with the npm workspace (package.json).
+# The Hub app (apps/hub/src-tauri) and the shared `core` crate are members;
+# a future Agent binary (apps/agent) joins here and reuses `core`.
+[workspace]
+resolver = "2"
+members = ["apps/hub/src-tauri", "crates/core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Papa Luke"]
+
+# Release profile lives at the workspace root (Cargo ignores member profiles
+# in a workspace).
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

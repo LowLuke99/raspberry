@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import type { ModuleManifest } from "./types";
 import { ModulePlaceholder } from "@/ui/ModulePlaceholder";
+import { SystemMonitorPanel } from "./system-monitor/SystemMonitorPanel";
+import { ProcessExplorerPanel } from "./process-explorer/ProcessExplorerPanel";
+import { GraphsPanel } from "./graphs/GraphsPanel";
+import { FilesPanel } from "./files/FilesPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -30,6 +34,7 @@ function defineModule(input: {
   description: string;
   section?: ModuleManifest["section"];
   keywords?: string[];
+  Component?: ModuleManifest["Component"];
 }): ModuleManifest {
   return {
     id: input.id,
@@ -38,7 +43,7 @@ function defineModule(input: {
     icon: input.icon,
     description: input.description,
     section: input.section ?? "core",
-    Component: ModulePlaceholder,
+    Component: input.Component ?? ModulePlaceholder,
     ...(input.keywords ? { keywords: input.keywords } : {}),
   };
 }
@@ -60,15 +65,17 @@ export const moduleManifests: ModuleManifest[] = [
     id: "system-monitor",
     label: "System Monitor",
     icon: Gauge,
-    description: "CPU, GPU, RAM, disk, temps, fans — live.",
+    description: "CPU, RAM, disk, network — live.",
     keywords: ["cpu", "gpu", "ram", "temps", "fans", "resources"],
+    Component: SystemMonitorPanel,
   }),
   defineModule({
     id: "process-explorer",
     label: "Process Explorer",
     icon: ListTree,
-    description: "Process tree, resource usage, kill, priority.",
+    description: "Process list, resource usage, kill.",
     keywords: ["processes", "kill", "pid", "threads", "priority"],
+    Component: ProcessExplorerPanel,
   }),
   defineModule({
     id: "network",
@@ -95,8 +102,9 @@ export const moduleManifests: ModuleManifest[] = [
     id: "files",
     label: "Files",
     icon: FolderTree,
-    description: "Tree explorer, preview, hash, batch rename, transfer.",
+    description: "Browse the local tree — folders, sizes, drives.",
     keywords: ["files", "explorer", "rename", "hash", "transfer"],
+    Component: FilesPanel,
   }),
   defineModule({
     id: "storage",
@@ -130,8 +138,9 @@ export const moduleManifests: ModuleManifest[] = [
     id: "graphs",
     label: "Graphs",
     icon: LineChart,
-    description: "Live charts — CPU, GPU, memory, net, disk, temps.",
+    description: "Live charts — CPU, memory, network.",
     keywords: ["charts", "graphs", "live", "metrics", "overlay"],
+    Component: GraphsPanel,
   }),
   defineModule({
     id: "logs",

@@ -9,8 +9,11 @@ dist-ssr/
 *.local
 
 # rust / tauri
+/target/
 apps/hub/src-tauri/target/
 apps/hub/src-tauri/gen/
+# icon generation source (kept) + downloaded toolchain installers
+*.exe
 
 # editor
 .vscode/*

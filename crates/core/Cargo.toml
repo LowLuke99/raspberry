@@ -1,0 +1,13 @@
+[package]
+name = "raspberry-core"
+description = "Shared system-access core: stats, processes, files. Used by Hub (local) and Agent (remote)."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+name = "raspberry_core"
+
+[dependencies]
+sysinfo = "0.33"
+serde = { version = "1", features = ["derive"] }
