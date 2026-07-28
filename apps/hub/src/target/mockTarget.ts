@@ -1,5 +1,7 @@
 import type {
   FileEntry,
+  LanDevice,
+  NetworkInfo,
   ProcessInfo,
   SystemSnapshot,
   Target,
@@ -115,5 +117,32 @@ export const mockTarget: Target = {
 
   async roots(): Promise<string[]> {
     return ["C:\\", "D:\\"];
+  },
+
+  async networkInfo(): Promise<NetworkInfo> {
+    return {
+      interfaces: [
+        { name: "Ethernet", friendly: "Ethernet", mac: "a4:83:e7:1c:2d:3e", ipv4: ["192.168.1.42"], is_up: true },
+        { name: "Wi-Fi", friendly: "Wi-Fi", mac: "b8:27:eb:9a:1f:04", ipv4: ["192.168.1.77"], is_up: true },
+        { name: "Loopback", friendly: "Loopback", mac: null, ipv4: ["127.0.0.1"], is_up: true },
+      ],
+      local_ip: "192.168.1.42",
+      gateway_ip: "192.168.1.1",
+      gateway_mac: "3c:5a:b4:11:22:33",
+    };
+  },
+
+  async scanLan(): Promise<LanDevice[]> {
+    return [
+      { ip: "192.168.1.1", mac: "3c:5a:b4:11:22:33", vendor: "Google", kind: "dynamic" },
+      { ip: "192.168.1.42", mac: "a4:83:e7:1c:2d:3e", vendor: "Apple", kind: "dynamic" },
+      { ip: "192.168.1.58", mac: "b8:27:eb:9a:1f:04", vendor: "Raspberry Pi", kind: "dynamic" },
+      { ip: "192.168.1.77", mac: "00:15:5d:aa:bb:cc", vendor: "Microsoft (Hyper-V)", kind: "dynamic" },
+      { ip: "192.168.1.90", mac: "dc:a6:32:44:55:66", vendor: "Raspberry Pi", kind: "dynamic" },
+    ];
+  },
+
+  async wakeOnLan(_mac: string): Promise<void> {
+    return;
   },
 };

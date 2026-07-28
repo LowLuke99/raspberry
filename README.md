@@ -18,7 +18,13 @@ pseudo-terminal, streaming output over `term:data:<id>` events with keystrokes
 and resize piped back. Sessions persist across tab switches. Native app only
 (the browser preview shows a "native only" notice, since PTYs need the OS).
 
-Next: Phase 4 — Network + discovery (mDNS device list, map, Wake-on-LAN).
+**Phase 4 — Network + discovery** ✅ — Network Dashboard (interfaces, MAC, local
+IP, gateway via the `netdev` crate) and Local Network Manager (LAN device
+discovery from the ARP cache, built-in OUI vendor lookup, and **Wake-on-LAN**
+magic packets over UDP broadcast). Also wired the bottom **status bar to live
+data** (was still mock through Phase 3).
+
+Next: Phase 5 — Agent binary + mTLS transport (drive a second machine remotely).
 
 ---
 

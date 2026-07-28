@@ -22,6 +22,8 @@ import { ProcessExplorerPanel } from "./process-explorer/ProcessExplorerPanel";
 import { GraphsPanel } from "./graphs/GraphsPanel";
 import { FilesPanel } from "./files/FilesPanel";
 import { TerminalPanel } from "./terminal/TerminalPanel";
+import { NetworkPanel } from "./network/NetworkPanel";
+import { LanManagerPanel } from "./lan-manager/LanManagerPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -91,15 +93,17 @@ export const moduleManifests: ModuleManifest[] = [
     id: "network",
     label: "Network",
     icon: Globe,
-    description: "IP, DNS, ping, traceroute, interfaces, bandwidth.",
+    description: "Local IP, gateway, interfaces (MAC + IPv4).",
     keywords: ["ip", "dns", "ping", "traceroute", "bandwidth", "wifi"],
+    Component: NetworkPanel,
   }),
   defineModule({
     id: "lan-manager",
     label: "Local Network Manager",
     icon: Radar,
-    description: "Discover devices, vendor lookup, map, Wake-on-LAN.",
+    description: "Discover devices (ARP), vendor lookup, Wake-on-LAN.",
     keywords: ["discover", "devices", "mac", "wol", "map", "oui"],
+    Component: LanManagerPanel,
   }),
   defineModule({
     id: "ssh",

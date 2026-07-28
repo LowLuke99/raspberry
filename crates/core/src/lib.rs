@@ -3,10 +3,12 @@
 //! the process table, and file browsing against the local machine.
 
 mod files;
+mod net;
 mod process;
 mod stats;
 
 pub use files::{list_dir, list_roots, home_dir, FileEntry};
+pub use net::{network_info, scan_lan, wake_on_lan, LanDevice, NetInterface, NetworkInfo};
 pub use process::{kill_process, list_processes, ProcessInfo};
 pub use stats::{CpuCore, DiskInfo, SystemSnapshot};
 

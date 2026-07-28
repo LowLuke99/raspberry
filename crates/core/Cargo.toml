@@ -11,3 +11,4 @@ name = "raspberry_core"
 [dependencies]
 sysinfo = "0.33"
 serde = { version = "1", features = ["derive"] }
+netdev = "0.30"

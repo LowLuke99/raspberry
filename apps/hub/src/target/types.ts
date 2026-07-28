@@ -54,6 +54,28 @@ export interface FileEntry {
   modified_ms: number | null;
 }
 
+export interface NetInterface {
+  name: string;
+  friendly: string;
+  mac: string | null;
+  ipv4: string[];
+  is_up: boolean;
+}
+
+export interface NetworkInfo {
+  interfaces: NetInterface[];
+  local_ip: string | null;
+  gateway_ip: string | null;
+  gateway_mac: string | null;
+}
+
+export interface LanDevice {
+  ip: string;
+  mac: string;
+  vendor: string;
+  kind: string;
+}
+
 export interface Target {
   /** True for a real machine (Tauri), false for the mock browser preview. */
   readonly isLive: boolean;
@@ -63,4 +85,7 @@ export interface Target {
   listDir(path: string): Promise<FileEntry[]>;
   homeDir(): Promise<string>;
   roots(): Promise<string[]>;
+  networkInfo(): Promise<NetworkInfo>;
+  scanLan(): Promise<LanDevice[]>;
+  wakeOnLan(mac: string): Promise<void>;
 }

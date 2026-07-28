@@ -9,7 +9,8 @@ mod terminal;
 use std::sync::Mutex;
 
 use raspberry_core::{
-    home_dir, list_dir, list_roots, FileEntry, Monitor, ProcessInfo, SystemSnapshot,
+    home_dir, list_dir, list_roots, FileEntry, LanDevice, Monitor, NetworkInfo, ProcessInfo,
+    SystemSnapshot,
 };
 use tauri::State;
 use terminal::Terminals;
@@ -63,6 +64,23 @@ fn files_roots() -> Vec<String> {
     list_roots()
 }
 
+#[tauri::command]
+fn network_info() -> NetworkInfo {
+    raspberry_core::network_info()
+}
+
+#[tauri::command]
+fn network_scan() -> Vec<LanDevice> {
+    raspberry_core::scan_lan()
+}
+
+/// Send a Wake-on-LAN magic packet. State-changing but LAN-local and harmless
+/// (worst case: nothing wakes); the frontend still confirms before calling.
+#[tauri::command]
+fn wake_on_lan(mac: String) -> Result<(), String> {
+    raspberry_core::wake_on_lan(&mac)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -77,6 +95,9 @@ pub fn run() {
             files_list,
             files_home,
             files_roots,
+            network_info,
+            network_scan,
+            wake_on_lan,
             terminal::terminal_open,
             terminal::terminal_write,
             terminal::terminal_resize,

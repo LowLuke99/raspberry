@@ -2,9 +2,15 @@ import type { Target } from "./types";
 import { localTarget } from "./localTarget";
 import { mockTarget } from "./mockTarget";
 
-/** True when running inside the Tauri webview (vs a plain browser). */
+/** True when running inside the Tauri webview (vs a plain browser). Checks every
+ *  signal Tauri v2 may expose so the native app reliably reads as live. */
 export function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+  if (typeof window === "undefined") return false;
+  return (
+    "__TAURI_INTERNALS__" in window ||
+    "__TAURI__" in window ||
+    "isTauri" in window
+  );
 }
 
 /**

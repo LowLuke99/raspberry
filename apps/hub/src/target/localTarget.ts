@@ -1,5 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { FileEntry, ProcessInfo, SystemSnapshot, Target } from "./types";
+import type {
+  FileEntry,
+  LanDevice,
+  NetworkInfo,
+  ProcessInfo,
+  SystemSnapshot,
+  Target,
+} from "./types";
 
 /**
  * LocalTarget — drives the local machine through the Rust `core` crate via
@@ -15,4 +22,7 @@ export const localTarget: Target = {
   listDir: (path) => invoke<FileEntry[]>("files_list", { path }),
   homeDir: () => invoke<string>("files_home"),
   roots: () => invoke<string[]>("files_roots"),
+  networkInfo: () => invoke<NetworkInfo>("network_info"),
+  scanLan: () => invoke<LanDevice[]>("network_scan"),
+  wakeOnLan: (mac) => invoke<void>("wake_on_lan", { mac }),
 };
