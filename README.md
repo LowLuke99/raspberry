@@ -12,7 +12,13 @@ the native app. The browser preview (`npm run dev`) uses a `MockTarget` so it
 still runs without Rust — each panel shows a **LIVE** (native) or **SAMPLE**
 (browser) badge so you always know which you're looking at.
 
-Next: Phase 3 — the built-in terminal (xterm.js + PTY).
+**Phase 3 — Terminal** ✅ — a real tabbed terminal (spec §9): xterm.js in the
+frontend, a `portable-pty` backend that spawns PowerShell / CMD / WSL behind a
+pseudo-terminal, streaming output over `term:data:<id>` events with keystrokes
+and resize piped back. Sessions persist across tab switches. Native app only
+(the browser preview shows a "native only" notice, since PTYs need the OS).
+
+Next: Phase 4 — Network + discovery (mDNS device list, map, Wake-on-LAN).
 
 ---
 

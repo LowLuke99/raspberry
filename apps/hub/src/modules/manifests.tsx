@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   LineChart,
   ScrollText,
+  Terminal as TerminalIcon,
   type LucideIcon,
 } from "lucide-react";
 import type { ModuleManifest } from "./types";
@@ -20,6 +21,7 @@ import { SystemMonitorPanel } from "./system-monitor/SystemMonitorPanel";
 import { ProcessExplorerPanel } from "./process-explorer/ProcessExplorerPanel";
 import { GraphsPanel } from "./graphs/GraphsPanel";
 import { FilesPanel } from "./files/FilesPanel";
+import { TerminalPanel } from "./terminal/TerminalPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -60,6 +62,14 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Every machine on your LAN, one glass grid.",
     section: "deck",
     keywords: ["fleet", "machines", "grid", "overview", "home"],
+  }),
+  defineModule({
+    id: "terminal",
+    label: "Terminal",
+    icon: TerminalIcon,
+    description: "Tabbed PowerShell / CMD / WSL — real shells.",
+    keywords: ["terminal", "shell", "powershell", "cmd", "wsl", "console"],
+    Component: TerminalPanel,
   }),
   defineModule({
     id: "system-monitor",

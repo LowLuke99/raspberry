@@ -4,12 +4,15 @@
 //! The React side calls these via `invoke(...)` (LocalTarget). A future
 //! RemoteTarget will send the same shapes over the wire to an Agent.
 
+mod terminal;
+
 use std::sync::Mutex;
 
 use raspberry_core::{
     home_dir, list_dir, list_roots, FileEntry, Monitor, ProcessInfo, SystemSnapshot,
 };
 use tauri::State;
+use terminal::Terminals;
 
 /// App-wide state. The `Monitor` is locked per call so successive snapshots
 /// compute correct CPU / network deltas.
@@ -66,6 +69,7 @@ pub fn run() {
         .manage(AppState {
             monitor: Mutex::new(Monitor::new()),
         })
+        .manage(Terminals::default())
         .invoke_handler(tauri::generate_handler![
             system_snapshot,
             process_list,
@@ -73,6 +77,10 @@ pub fn run() {
             files_list,
             files_home,
             files_roots,
+            terminal::terminal_open,
+            terminal::terminal_write,
+            terminal::terminal_resize,
+            terminal::terminal_close,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Raspberry Hub window");
