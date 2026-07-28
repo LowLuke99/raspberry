@@ -24,6 +24,7 @@ import { FilesPanel } from "./files/FilesPanel";
 import { TerminalPanel } from "./terminal/TerminalPanel";
 import { NetworkPanel } from "./network/NetworkPanel";
 import { LanManagerPanel } from "./lan-manager/LanManagerPanel";
+import { DevToolboxPanel } from "./dev-toolbox/DevToolboxPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -131,8 +132,9 @@ export const moduleManifests: ModuleManifest[] = [
     id: "dev-toolbox",
     label: "Dev Toolbox",
     icon: Wrench,
-    description: "JSON, Base64, UUID, regex, diff, timestamp tools.",
-    keywords: ["json", "base64", "uuid", "regex", "diff", "utilities"],
+    description: "JSON, Base64, UUID, SHA-256, timestamp — offline.",
+    keywords: ["json", "base64", "uuid", "regex", "diff", "utilities", "hash", "sha256"],
+    Component: DevToolboxPanel,
   }),
   defineModule({
     id: "automation",
