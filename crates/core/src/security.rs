@@ -93,16 +93,15 @@ fn fetch_defender() -> Option<DefenderStatus> {
     let script = r#"
         try {
             $s = Get-MpComputerStatus
-            $obj = [PSCustomObject]@{
-                enabled = -not $s.AntivirusEnabled -eq $false
-                realtime = $s.RealTimeProtectionEnabled
-                tamper = $s.IsTamperProtected
-                sig_days = $s.AntivirusSignatureAge
-                full_days = if ($s.FullScanAge -eq $null) { -1 } else { $s.FullScanAge }
-                quick_days = if ($s.QuickScanAge -eq $null) { -1 } else { $s.QuickScanAge }
-                engine = $s.AMEngineVersion
-            }
-            $obj | ConvertTo-Json -Compress
+            [PSCustomObject]@{
+                enabled = [bool]$s.AntivirusEnabled
+                realtime = [bool]$s.RealTimeProtectionEnabled
+                tamper = [bool]$s.IsTamperProtected
+                sig_days = if ($null -eq $s.AntivirusSignatureAge) { -1 } else { [int64]$s.AntivirusSignatureAge }
+                full_days = if ($null -eq $s.FullScanAge) { -1 } else { [int64]$s.FullScanAge }
+                quick_days = if ($null -eq $s.QuickScanAge) { -1 } else { [int64]$s.QuickScanAge }
+                engine = [string]$s.AMEngineVersion
+            } | ConvertTo-Json -Compress
         } catch { '{}' }
     "#;
     let out = ps(script).ok()?;
@@ -169,10 +168,10 @@ fn fetch_firewall() -> Vec<FirewallProfile> {
                 _ => false,
             };
             Some(FirewallProfile {
-                name: value_to_string(r.Name),
+                name: firewall_profile_label(r.Name),
                 enabled,
-                default_inbound: value_to_string(r.DefaultInboundAction),
-                default_outbound: value_to_string(r.DefaultOutboundAction),
+                default_inbound: firewall_action_label(r.DefaultInboundAction),
+                default_outbound: firewall_action_label(r.DefaultOutboundAction),
             })
         })
         .collect()
@@ -213,18 +212,9 @@ fn fetch_bitlocker() -> Vec<BitlockerVolume> {
             let r: Raw = serde_json::from_value(v).ok()?;
             Some(BitlockerVolume {
                 mount: r.MountPoint.unwrap_or_default(),
-                protection_status: match r.ProtectionStatus {
-                    Some(serde_json::Value::Number(n)) => match n.as_i64() {
-                        Some(1) => "On".into(),
-                        Some(0) => "Off".into(),
-                        Some(2) => "Unknown".into(),
-                        _ => "?".into(),
-                    },
-                    Some(serde_json::Value::String(s)) => s,
-                    _ => "?".into(),
-                },
+                protection_status: bitlocker_protection_label(r.ProtectionStatus),
                 encryption_percent: r.EncryptionPercentage.unwrap_or(0.0),
-                volume_status: value_to_string(r.VolumeStatus),
+                volume_status: bitlocker_volume_status_label(r.VolumeStatus),
             })
         })
         .collect()
@@ -296,11 +286,64 @@ fn fetch_uac() -> Option<i64> {
     out.trim().parse::<i64>().ok().filter(|v| *v >= 0)
 }
 
-fn value_to_string(v: Option<serde_json::Value>) -> String {
+// Windows firewall enums serialize as ints in JSON on modern PowerShell.
+// Translate them so the UI shows "Block" instead of "4".
+
+fn firewall_action_label(v: Option<serde_json::Value>) -> String {
+    // From MSFT: 0 = NotConfigured, 2 = Allow, 4 = Block. Some older builds
+    // report 1 = Allow, so honour both.
     match v {
         Some(serde_json::Value::String(s)) => s,
-        Some(serde_json::Value::Number(n)) => n.to_string(),
-        Some(serde_json::Value::Bool(b)) => b.to_string(),
-        _ => String::new(),
+        Some(serde_json::Value::Number(n)) => match n.as_i64().unwrap_or(-1) {
+            0 => "NotConfigured".into(),
+            1 | 2 => "Allow".into(),
+            3 | 4 => "Block".into(),
+            other => format!("Unknown({other})"),
+        },
+        _ => "—".into(),
+    }
+}
+
+fn firewall_profile_label(v: Option<serde_json::Value>) -> String {
+    // Name is normally a string ("Domain", "Private", "Public"), but on some
+    // builds serialises as its bit mask value.
+    match v {
+        Some(serde_json::Value::String(s)) => s,
+        Some(serde_json::Value::Number(n)) => match n.as_i64().unwrap_or(-1) {
+            1 => "Domain".into(),
+            2 => "Private".into(),
+            4 => "Public".into(),
+            other => format!("Profile {other}"),
+        },
+        _ => "—".into(),
+    }
+}
+
+fn bitlocker_protection_label(v: Option<serde_json::Value>) -> String {
+    match v {
+        Some(serde_json::Value::String(s)) => s,
+        Some(serde_json::Value::Number(n)) => match n.as_i64().unwrap_or(-1) {
+            0 => "Off".into(),
+            1 => "On".into(),
+            2 => "Unknown".into(),
+            other => format!("Unknown({other})"),
+        },
+        _ => "—".into(),
+    }
+}
+
+fn bitlocker_volume_status_label(v: Option<serde_json::Value>) -> String {
+    match v {
+        Some(serde_json::Value::String(s)) => s,
+        Some(serde_json::Value::Number(n)) => match n.as_i64().unwrap_or(-1) {
+            0 => "FullyDecrypted".into(),
+            1 => "FullyEncrypted".into(),
+            2 => "EncryptionInProgress".into(),
+            3 => "DecryptionInProgress".into(),
+            4 => "EncryptionPaused".into(),
+            5 => "DecryptionPaused".into(),
+            other => format!("Status {other}"),
+        },
+        _ => "—".into(),
     }
 }
