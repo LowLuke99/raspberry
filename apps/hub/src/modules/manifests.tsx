@@ -13,6 +13,7 @@ import {
   LineChart,
   ScrollText,
   Terminal as TerminalIcon,
+  BookText,
   type LucideIcon,
 } from "lucide-react";
 import type { ModuleManifest } from "./types";
@@ -25,6 +26,7 @@ import { TerminalPanel } from "./terminal/TerminalPanel";
 import { NetworkPanel } from "./network/NetworkPanel";
 import { LanManagerPanel } from "./lan-manager/LanManagerPanel";
 import { DevToolboxPanel } from "./dev-toolbox/DevToolboxPanel";
+import { CommandsPanel } from "./commands/CommandsPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -73,6 +75,23 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Tabbed PowerShell / CMD / WSL — real shells.",
     keywords: ["terminal", "shell", "powershell", "cmd", "wsl", "console"],
     Component: TerminalPanel,
+  }),
+  defineModule({
+    id: "commands",
+    label: "Commands",
+    icon: BookText,
+    description: "Windows commands library — click to copy, tap to learn.",
+    keywords: [
+      "commands",
+      "cmd",
+      "powershell",
+      "cheatsheet",
+      "reference",
+      "snippets",
+      "copy",
+      "windows",
+    ],
+    Component: CommandsPanel,
   }),
   defineModule({
     id: "system-monitor",
