@@ -49,6 +49,21 @@ data** (was still mock through Phase 3).
   module ask the shell to switch panels (`nav:go`) or the Terminal to paste a
   command (`terminal:run`) without either side knowing about the other.
 
+**Phase 5.5 — Palette & readability polish** ✅ — quality-of-life pass over the
+UX now that the modules are complete:
+
+- **Commands page redesign** — cards breathe: the command name gets two full
+  lines instead of ellipsis, the mono command sits on its own dedicated (and
+  wrapping) copy strip, and the category filter is a horizontal scroll rail
+  with edge-fade arrows instead of a wall of wrapping pills. A **Recent** tab
+  tracks the last six commands you copied or ran (persisted via
+  localStorage), so the tools you actually use surface first next session.
+- **Ctrl+K meets Windows commands** — the command palette now searches the
+  full commands catalog alongside module jumps. Typing anything queries both
+  layers; **Enter on a command entry copies it to the clipboard** (palette
+  stays open so you can copy another). Module jumps still Enter-and-close as
+  before.
+
 Next: Phase 6 — Agent binary + mTLS transport (drive a second machine remotely).
 
 ---
