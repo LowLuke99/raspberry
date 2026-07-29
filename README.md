@@ -24,7 +24,32 @@ discovery from the ARP cache, built-in OUI vendor lookup, and **Wake-on-LAN**
 magic packets over UDP broadcast). Also wired the bottom **status bar to live
 data** (was still mock through Phase 3).
 
-Next: Phase 5 — Agent binary + mTLS transport (drive a second machine remotely).
+**Phase 5 — Power modules + release** ✅ — the app is now genuinely useful:
+
+- **Commands** — searchable Windows commands library (61 curated CMD /
+  PowerShell one-liners across 8 categories). Click a card to copy it; hit the
+  chevron to see a plain-English description of what it does; star to pin to
+  favorites (persists via localStorage). In the native app each card also gets
+  a **Run** button that switches to the built-in Terminal and pastes the
+  command (does not auto-press Enter — the user still confirms).
+- **Storage** — volume rings (used %, colored by remaining space) plus a real
+  physical-disk table (SSD/HDD/NVMe/USB, model, capacity, health, serial)
+  sourced from `Get-PhysicalDisk`.
+- **Security** — a live posture score plus Windows Defender status (realtime,
+  tamper protection, signature age, last scans), Firewall per profile,
+  BitLocker per volume, UAC level, and the last 20 Windows updates. All
+  read-only; nothing is ever mutated.
+- **Logs** — Windows Event Log viewer (System / Application / Security) via
+  `Get-WinEvent`, with level filter, full-text search, and per-row expand
+  showing the full event body.
+- **Command Deck** — the actual home screen now: hero card for the active
+  machine, four live vital tiles (CPU / memory / net / processes), a volume
+  strip, and a jump grid to every tool.
+- **Cross-module bus** — a tiny typed EventTarget (`src/lib/bus.ts`) lets one
+  module ask the shell to switch panels (`nav:go`) or the Terminal to paste a
+  command (`terminal:run`) without either side knowing about the other.
+
+Next: Phase 6 — Agent binary + mTLS transport (drive a second machine remotely).
 
 ---
 
@@ -94,12 +119,15 @@ raspberry/
       │  ├─ styles/        # tokens.css (§5) + global.css (ambient backdrop)
       │  ├─ ui/            # GlassPanel, LiveChart, Meter, PanelShell, IconButton, …
       │  ├─ layout/        # TopBar, Sidebar, Workspace, StatusBar, MachineChip, AppShell
-      │  ├─ modules/       # registry + manifests; system-monitor/ process-explorer/ graphs/ files/
+      │  ├─ modules/       # registry + manifests + one folder per tool
+      │  │                 #   command-deck/ terminal/ commands/ system-monitor/
+      │  │                 #   process-explorer/ network/ lan-manager/ files/
+      │  │                 #   storage/ security/ logs/ dev-toolbox/ graphs/
       │  ├─ target/        # Target abstraction: LocalTarget (invoke) + MockTarget (browser)
       │  ├─ hooks/         # usePolling, useSeries
       │  ├─ command/       # Ctrl+K palette + tunable match/rank
       │  ├─ state/         # Zustand shell store
-      │  └─ lib/           # cn(), format(), mock.ts
+      │  └─ lib/           # cn(), format(), bus (cross-module events), mock
       └─ src-tauri/        # Rust: window + Tauri commands bridging core, icons, config
 ```
 

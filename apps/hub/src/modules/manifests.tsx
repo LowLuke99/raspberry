@@ -27,6 +27,10 @@ import { NetworkPanel } from "./network/NetworkPanel";
 import { LanManagerPanel } from "./lan-manager/LanManagerPanel";
 import { DevToolboxPanel } from "./dev-toolbox/DevToolboxPanel";
 import { CommandsPanel } from "./commands/CommandsPanel";
+import { StoragePanel } from "./storage/StoragePanel";
+import { SecurityPanel } from "./security/SecurityPanel";
+import { LogsPanel } from "./logs/LogsPanel";
+import { CommandDeckPanel } from "./command-deck/CommandDeckPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -64,9 +68,10 @@ export const moduleManifests: ModuleManifest[] = [
     id: "command-deck",
     label: "Command Deck",
     icon: LayoutGrid,
-    description: "Every machine on your LAN, one glass grid.",
+    description: "Live vitals, storage at a glance, jump to any tool.",
     section: "deck",
-    keywords: ["fleet", "machines", "grid", "overview", "home"],
+    keywords: ["fleet", "machines", "grid", "overview", "home", "dashboard"],
+    Component: CommandDeckPanel,
   }),
   defineModule({
     id: "terminal",
@@ -144,8 +149,9 @@ export const moduleManifests: ModuleManifest[] = [
     id: "storage",
     label: "Storage",
     icon: HardDrive,
-    description: "Treemap, drive usage, SMART health, duplicates.",
-    keywords: ["disk", "storage", "smart", "treemap", "duplicates"],
+    description: "Volumes + physical disks — SSD/HDD/USB, health, capacity.",
+    keywords: ["disk", "storage", "smart", "volume", "ssd", "hdd", "nvme"],
+    Component: StoragePanel,
   }),
   defineModule({
     id: "dev-toolbox",
@@ -166,8 +172,9 @@ export const moduleManifests: ModuleManifest[] = [
     id: "security",
     label: "Security",
     icon: ShieldCheck,
-    description: "Defender, firewall, updates, BitLocker, audit score.",
-    keywords: ["defender", "firewall", "bitlocker", "audit", "updates"],
+    description: "Defender, firewall, BitLocker, UAC, updates — posture score.",
+    keywords: ["defender", "firewall", "bitlocker", "audit", "updates", "uac", "posture"],
+    Component: SecurityPanel,
   }),
   defineModule({
     id: "graphs",
@@ -181,7 +188,8 @@ export const moduleManifests: ModuleManifest[] = [
     id: "logs",
     label: "Logs",
     icon: ScrollText,
-    description: "Unified viewer — app, event, terminal history.",
-    keywords: ["logs", "events", "history", "search", "filter"],
+    description: "Windows Event Log — System, Application, Security.",
+    keywords: ["logs", "events", "eventvwr", "history", "search", "filter", "winevent"],
+    Component: LogsPanel,
   }),
 ];

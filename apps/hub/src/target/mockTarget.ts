@@ -1,8 +1,11 @@
 import type {
   FileEntry,
   LanDevice,
+  LogEvent,
   NetworkInfo,
+  PhysicalDisk,
   ProcessInfo,
+  SecuritySnapshot,
   SystemSnapshot,
   Target,
 } from "./types";
@@ -144,5 +147,91 @@ export const mockTarget: Target = {
 
   async wakeOnLan(_mac: string): Promise<void> {
     return;
+  },
+
+  async storageDisks(): Promise<PhysicalDisk[]> {
+    return [
+      {
+        friendly_name: "Samsung SSD 980 PRO 1TB",
+        model: "Samsung SSD 980 PRO 1TB",
+        media_type: "SSD",
+        bus_type: "NVMe",
+        size_bytes: 1_000_204_886_016,
+        health: "Healthy",
+        operational_status: "OK",
+        serial: "S6B0NF0R123456A",
+      },
+      {
+        friendly_name: "WDC WD10EZEX-08WN4A0",
+        model: "WDC WD10EZEX-08WN4A0",
+        media_type: "HDD",
+        bus_type: "SATA",
+        size_bytes: 1_000_204_886_016,
+        health: "Healthy",
+        operational_status: "OK",
+        serial: "WD-WCC6Y7XX1234",
+      },
+      {
+        friendly_name: "SanDisk Ultra USB",
+        model: "SanDisk Ultra USB",
+        media_type: "SSD",
+        bus_type: "USB",
+        size_bytes: 62_914_560_000,
+        health: "Healthy",
+        operational_status: "OK",
+        serial: "4C531001580619103450",
+      },
+    ];
+  },
+
+  async securityStatus(): Promise<SecuritySnapshot> {
+    return {
+      defender: {
+        enabled: true,
+        realtime: true,
+        tamper_protection: true,
+        signature_age_days: 1,
+        last_full_scan_days: 4,
+        last_quick_scan_days: 0,
+        engine_version: "1.1.24080.9 (mock)",
+      },
+      firewall: [
+        { name: "Domain", enabled: true, default_inbound: "Block", default_outbound: "Allow" },
+        { name: "Private", enabled: true, default_inbound: "Block", default_outbound: "Allow" },
+        { name: "Public", enabled: true, default_inbound: "Block", default_outbound: "Allow" },
+      ],
+      bitlocker: [
+        { mount: "C:", protection_status: "On", encryption_percent: 100, volume_status: "FullyEncrypted" },
+      ],
+      hotfixes: [
+        { id: "KB5041580", description: "Security Update", installed_on: "2026-07-15T00:00:00" },
+        { id: "KB5041872", description: "Update", installed_on: "2026-07-10T00:00:00" },
+        { id: "KB5040442", description: "Security Update", installed_on: "2026-06-11T00:00:00" },
+      ],
+      uac_level: 5,
+      warnings: [],
+    };
+  },
+
+  async logsRead(log: string, max: number): Promise<LogEvent[]> {
+    const now = Date.now();
+    const providers = ["Microsoft-Windows-Kernel-General", "Service Control Manager", "Application Error", "USER32", "WinLogon"];
+    const levels = ["Information", "Information", "Information", "Warning", "Error"];
+    const messages = [
+      "The operating system started at system time",
+      "A service was stopped successfully.",
+      "The requested operation completed with a status code of 0x0.",
+      "Faulting application chrome.exe, version 128.0.0.0 encountered an unexpected error.",
+      "System configuration changed. Applying new policy.",
+    ];
+    const count = Math.min(max, 40);
+    return Array.from({ length: count }, (_, i) => ({
+      log,
+      time: new Date(now - i * 60_000 * (1 + Math.random() * 5)).toISOString(),
+      level: levels[i % levels.length]!,
+      id: 1000 + (i * 7) % 400,
+      provider: providers[i % providers.length]!,
+      message: messages[i % messages.length]!,
+    }));
   },
 };

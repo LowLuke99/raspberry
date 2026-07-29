@@ -9,8 +9,9 @@ mod terminal;
 use std::sync::Mutex;
 
 use raspberry_core::{
-    home_dir, list_dir, list_roots, FileEntry, LanDevice, Monitor, NetworkInfo, ProcessInfo,
-    SystemSnapshot,
+    home_dir, list_dir, list_roots, read_events, security_snapshot, list_physical_disks,
+    FileEntry, LanDevice, LogEvent, Monitor, NetworkInfo, PhysicalDisk, ProcessInfo,
+    SecuritySnapshot, SystemSnapshot,
 };
 use tauri::State;
 use terminal::Terminals;
@@ -81,6 +82,21 @@ fn wake_on_lan(mac: String) -> Result<(), String> {
     raspberry_core::wake_on_lan(&mac)
 }
 
+#[tauri::command]
+fn storage_disks() -> Vec<PhysicalDisk> {
+    list_physical_disks()
+}
+
+#[tauri::command]
+fn security_status() -> SecuritySnapshot {
+    security_snapshot()
+}
+
+#[tauri::command]
+fn logs_read(log: String, max: u32) -> Vec<LogEvent> {
+    read_events(&log, max)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -98,6 +114,9 @@ pub fn run() {
             network_info,
             network_scan,
             wake_on_lan,
+            storage_disks,
+            security_status,
+            logs_read,
             terminal::terminal_open,
             terminal::terminal_write,
             terminal::terminal_resize,

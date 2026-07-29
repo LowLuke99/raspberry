@@ -76,6 +76,65 @@ export interface LanDevice {
   kind: string;
 }
 
+export interface PhysicalDisk {
+  friendly_name: string;
+  model: string;
+  media_type: string;
+  bus_type: string;
+  size_bytes: number;
+  health: string;
+  operational_status: string;
+  serial: string;
+}
+
+export interface DefenderStatus {
+  enabled: boolean;
+  realtime: boolean;
+  tamper_protection: boolean;
+  signature_age_days: number;
+  last_full_scan_days: number;
+  last_quick_scan_days: number;
+  engine_version: string;
+}
+
+export interface FirewallProfile {
+  name: string;
+  enabled: boolean;
+  default_inbound: string;
+  default_outbound: string;
+}
+
+export interface BitlockerVolume {
+  mount: string;
+  protection_status: string;
+  encryption_percent: number;
+  volume_status: string;
+}
+
+export interface HotFix {
+  id: string;
+  description: string;
+  installed_on: string;
+}
+
+export interface SecuritySnapshot {
+  defender: DefenderStatus;
+  firewall: FirewallProfile[];
+  bitlocker: BitlockerVolume[];
+  hotfixes: HotFix[];
+  uac_level: number | null;
+  warnings: string[];
+}
+
+export interface LogEvent {
+  log: string;
+  time: string;
+  level: string;
+  id: number;
+  provider: string;
+  message: string;
+}
+
 export interface Target {
   /** True for a real machine (Tauri), false for the mock browser preview. */
   readonly isLive: boolean;
@@ -88,4 +147,7 @@ export interface Target {
   networkInfo(): Promise<NetworkInfo>;
   scanLan(): Promise<LanDevice[]>;
   wakeOnLan(mac: string): Promise<void>;
+  storageDisks(): Promise<PhysicalDisk[]>;
+  securityStatus(): Promise<SecuritySnapshot>;
+  logsRead(log: string, max: number): Promise<LogEvent[]>;
 }

@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, X, TerminalSquare } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import type { ModuleManifest } from "@/modules/types";
 import { isTauri } from "@/target";
 import { cn } from "@/lib/cn";
+import { bus } from "@/lib/bus";
 import { TerminalView } from "./TerminalView";
 
 interface Tab {
@@ -45,6 +47,17 @@ export function TerminalPanel({ manifest }: { manifest: ModuleManifest }) {
       return next;
     });
   }
+
+  // Listen for cross-module "run this command" requests (e.g. from Commands).
+  // We paste into the active tab (never auto-execute unless the caller asks) —
+  // the user still hits Enter, which is the safer default for a copied command.
+  useEffect(() => {
+    if (!isTauri()) return;
+    return bus.on("terminal:run", ({ command, execute }) => {
+      const data = execute ? `${command}\r` : command;
+      invoke("terminal_write", { id: activeId, data }).catch(() => {});
+    });
+  }, [activeId]);
 
   // PTYs only exist in the native app; the browser preview can't spawn a shell.
   if (!isTauri()) {

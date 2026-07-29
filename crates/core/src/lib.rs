@@ -3,14 +3,23 @@
 //! the process table, and file browsing against the local machine.
 
 mod files;
+mod logs;
 mod net;
 mod process;
+mod security;
 mod stats;
+mod storage;
+mod winshell;
 
 pub use files::{list_dir, list_roots, home_dir, FileEntry};
+pub use logs::{read_events, LogEvent};
 pub use net::{network_info, scan_lan, wake_on_lan, LanDevice, NetInterface, NetworkInfo};
 pub use process::{kill_process, list_processes, ProcessInfo};
+pub use security::{
+    security_snapshot, BitlockerVolume, DefenderStatus, FirewallProfile, HotFix, SecuritySnapshot,
+};
 pub use stats::{CpuCore, DiskInfo, SystemSnapshot};
+pub use storage::{list_physical_disks, PhysicalDisk};
 
 use std::time::Instant;
 use sysinfo::{Disks, Networks, ProcessesToUpdate, System};

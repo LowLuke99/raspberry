@@ -7,12 +7,15 @@ import {
   ChevronDown,
   Star,
   Terminal,
+  Play,
   X,
 } from "lucide-react";
 import type { ModuleManifest } from "@/modules/types";
 import { PanelShell } from "@/ui/PanelShell";
 import { GlassPanel } from "@/ui/GlassPanel";
 import { cn } from "@/lib/cn";
+import { bus } from "@/lib/bus";
+import { isTauri } from "@/target";
 import {
   COMMANDS,
   CATEGORY_LABEL,
@@ -72,6 +75,12 @@ export function CommandsPanel({ manifest }: { manifest: ModuleManifest }) {
       else next.add(id);
       return next;
     });
+  };
+
+  const runInTerminal = (c: WinCommand) => {
+    bus.emit("nav:go", { moduleId: "terminal" });
+    // give the panel a beat to mount before we shove text into the PTY
+    setTimeout(() => bus.emit("terminal:run", { command: c.command }), 120);
   };
 
   const counts = useMemo(() => {
@@ -161,7 +170,9 @@ export function CommandsPanel({ manifest }: { manifest: ModuleManifest }) {
               expanded={expanded === c.id}
               copied={copiedId === c.id}
               starred={favorites.has(c.id)}
+              canRun={isTauri()}
               onCopy={() => copy(c)}
+              onRun={() => runInTerminal(c)}
               onToggleExpand={() =>
                 setExpanded((prev) => (prev === c.id ? null : c.id))
               }
@@ -189,7 +200,9 @@ function CommandCard({
   expanded,
   copied,
   starred,
+  canRun,
   onCopy,
+  onRun,
   onToggleExpand,
   onToggleFav,
 }: {
@@ -197,7 +210,9 @@ function CommandCard({
   expanded: boolean;
   copied: boolean;
   starred: boolean;
+  canRun: boolean;
   onCopy: () => void;
+  onRun: () => void;
   onToggleExpand: () => void;
   onToggleFav: () => void;
 }) {
@@ -252,18 +267,30 @@ function CommandCard({
           />
           {expanded ? "Hide info" : "What does this do?"}
         </button>
-        <button
-          type="button"
-          onClick={onToggleFav}
-          className={cn(
-            "focus-ring rounded p-1 transition-colors",
-            starred ? "text-raspberry" : "text-text-dim hover:text-text",
+        <div className="flex items-center gap-1">
+          {canRun && (
+            <button
+              type="button"
+              onClick={onRun}
+              className="focus-ring flex items-center gap-1 rounded bg-surface-hi px-2 py-0.5 text-[10.5px] uppercase tracking-wider text-text-dim transition-colors hover:text-raspberry"
+              title="Send to the built-in Terminal (does not auto-press Enter)"
+            >
+              <Play size={10} strokeWidth={2} /> run
+            </button>
           )}
-          aria-label={starred ? "Unstar" : "Star"}
-          title={starred ? "Remove from Favorites" : "Add to Favorites"}
-        >
-          <Star size={13} fill={starred ? "currentColor" : "none"} strokeWidth={1.75} />
-        </button>
+          <button
+            type="button"
+            onClick={onToggleFav}
+            className={cn(
+              "focus-ring rounded p-1 transition-colors",
+              starred ? "text-raspberry" : "text-text-dim hover:text-text",
+            )}
+            aria-label={starred ? "Unstar" : "Star"}
+            title={starred ? "Remove from Favorites" : "Add to Favorites"}
+          >
+            <Star size={13} fill={starred ? "currentColor" : "none"} strokeWidth={1.75} />
+          </button>
+        </div>
       </div>
 
       {expanded && (

@@ -2,8 +2,11 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   FileEntry,
   LanDevice,
+  LogEvent,
   NetworkInfo,
+  PhysicalDisk,
   ProcessInfo,
+  SecuritySnapshot,
   SystemSnapshot,
   Target,
 } from "./types";
@@ -25,4 +28,7 @@ export const localTarget: Target = {
   networkInfo: () => invoke<NetworkInfo>("network_info"),
   scanLan: () => invoke<LanDevice[]>("network_scan"),
   wakeOnLan: (mac) => invoke<void>("wake_on_lan", { mac }),
+  storageDisks: () => invoke<PhysicalDisk[]>("storage_disks"),
+  securityStatus: () => invoke<SecuritySnapshot>("security_status"),
+  logsRead: (log, max) => invoke<LogEvent[]>("logs_read", { log, max }),
 };
