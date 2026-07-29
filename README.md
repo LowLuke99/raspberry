@@ -64,7 +64,33 @@ UX now that the modules are complete:
   stays open so you can copy another). Module jumps still Enter-and-close as
   before.
 
-Next: Phase 6 — Agent binary + mTLS transport (drive a second machine remotely).
+**Phase 5.6 — GitHub power-ups** ✅ — four new modules that plug proven
+open-source tooling into the same "prepare then run" discipline:
+
+- **Tweaks** — a curated subset of
+  [ChrisTitusTech/winutil](https://github.com/ChrisTitusTech/winutil)'s most-
+  useful commands across Install / Debloat / Privacy / Performance / Fixes /
+  UI. Search + copy + optional "Run in Terminal" (never Enter-for-you). Every
+  card carries an `admin` or `risky` badge where it applies.
+- **Identity** — email + username OSINT. Auto-detects an `@` and switches
+  between [Holehe](https://github.com/megadose/holehe) commands (email → 100+
+  accounts) and [Sherlock](https://github.com/sherlock-project/sherlock)
+  commands (username → 400+ profiles). Ships a one-line pipx installer.
+- **LocalSend** — talks the
+  [LocalSend](https://github.com/localsend/localsend) v2 HTTP protocol
+  directly from the browser: drag-drop files, add peers by IP, watch the
+  progress bar, no cloud, no relay. Full mDNS discovery + inbound receive
+  land in Phase 6 (needs Rust for the :53317 listener).
+- **Kernel Inspector** — the hacker-tier companion to Process Explorer,
+  powered by
+  [winsiderss/systeminformer](https://github.com/winsiderss/systeminformer).
+  Type a PID and get one-click commands for handles / DLLs / TCP endpoints /
+  driver list / suspend / memory dump / "launch and select PID". Includes a
+  `winget install` helper.
+
+Next: Phase 6 — Agent binary + mTLS transport (drive a second machine
+remotely), plus a Rust-backed LocalSend server + Identity streamer that
+runs Holehe/Sherlock in-process instead of shelling out.
 
 ---
 

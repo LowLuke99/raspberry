@@ -14,6 +14,10 @@ import {
   ScrollText,
   Terminal as TerminalIcon,
   BookText,
+  Sparkles,
+  Send,
+  Cpu,
+  Fingerprint,
   type LucideIcon,
 } from "lucide-react";
 import type { ModuleManifest } from "./types";
@@ -31,6 +35,10 @@ import { StoragePanel } from "./storage/StoragePanel";
 import { SecurityPanel } from "./security/SecurityPanel";
 import { LogsPanel } from "./logs/LogsPanel";
 import { CommandDeckPanel } from "./command-deck/CommandDeckPanel";
+import { TweaksPanel } from "./tweaks/TweaksPanel";
+import { IdentityPanel } from "./identity/IdentityPanel";
+import { KernelInspectorPanel } from "./kernel-inspector/KernelInspectorPanel";
+import { LocalSendPanel } from "./localsend/LocalSendPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -97,6 +105,66 @@ export const moduleManifests: ModuleManifest[] = [
       "windows",
     ],
     Component: CommandsPanel,
+  }),
+  defineModule({
+    id: "tweaks",
+    label: "Tweaks",
+    icon: Sparkles,
+    description: "Install kits + debloat, privacy, perf, fixes, UI (winutil-style).",
+    keywords: [
+      "tweaks",
+      "winutil",
+      "debloat",
+      "privacy",
+      "install",
+      "winget",
+      "performance",
+      "fix",
+    ],
+    Component: TweaksPanel,
+  }),
+  defineModule({
+    id: "identity",
+    label: "Identity",
+    icon: Fingerprint,
+    description: "OSINT — find accounts by email (Holehe) or username (Sherlock).",
+    keywords: [
+      "osint",
+      "identity",
+      "email",
+      "username",
+      "sherlock",
+      "holehe",
+      "lookup",
+      "accounts",
+      "gmail",
+    ],
+    Component: IdentityPanel,
+  }),
+  defineModule({
+    id: "localsend",
+    label: "LocalSend",
+    icon: Send,
+    description: "LAN file transfer — AirDrop for every OS, no cloud.",
+    keywords: ["localsend", "airdrop", "send", "file", "transfer", "lan", "share"],
+    Component: LocalSendPanel,
+  }),
+  defineModule({
+    id: "kernel-inspector",
+    label: "Kernel Inspector",
+    icon: Cpu,
+    description: "Deep native inspection — handles, DLLs, TCP, drivers (System Informer).",
+    keywords: [
+      "systeminformer",
+      "process hacker",
+      "kernel",
+      "handles",
+      "drivers",
+      "dll",
+      "power",
+      "advanced",
+    ],
+    Component: KernelInspectorPanel,
   }),
   defineModule({
     id: "system-monitor",
