@@ -1,99 +1,201 @@
-# Raspberry — one-click updater.
+# Raspberry — one-click updater with a WinForms progress UI.
 #
-# What this does, in order:
-#   1. Closes any running Raspberry window (safe: just Close, not force-kill).
-#   2. Fast-forwards the local repo to GitHub main.
-#   3. Reinstalls npm deps only if package files changed.
-#   4. Runs `npm run tauri:build` to compile the native app.
-#   5. Launches the freshly built Raspberry.exe.
+# Launched two ways:
+#   1. Direct double-click on the "Update Raspberry" shortcut (via Update-Silent.vbs)
+#      → no console window, just the dark WinForms dialog
+#   2. Debug mode: right-click .ps1 -> Run with PowerShell (console + dialog)
 #
-# Run this any time you want the latest changes. No terminal knowledge needed
-# once the desktop shortcut points at it — just double-click and wait.
+# Pipeline: close running app -> git pull -> npm install if deps changed ->
+# tauri build -> launch fresh raspberry-hub.exe. Every step reports into the
+# UI so the user sees progress instead of a mysterious silent process.
 
 $ErrorActionPreference = "Stop"
 $RepoRoot   = Split-Path $PSScriptRoot -Parent
-$HubRoot    = Join-Path $RepoRoot "apps\hub"
-$ExePath    = Join-Path $HubRoot "src-tauri\target\release\Raspberry.exe"
+$ExePath    = Join-Path $RepoRoot "target\release\raspberry-hub.exe"
 $LogFile    = Join-Path $RepoRoot "update.log"
+$IconPath   = Join-Path $RepoRoot "apps\hub\src-tauri\icons\icon.ico"
 
-function Write-Step($msg) {
-  Write-Host ""
-  Write-Host "==> $msg" -ForegroundColor Magenta
-  Add-Content -Path $LogFile -Value "[$(Get-Date -Format o)] $msg"
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+# --- UI ---------------------------------------------------------------------
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "Raspberry Updater"
+$form.Size = New-Object System.Drawing.Size(540, 280)
+$form.StartPosition = "CenterScreen"
+$form.FormBorderStyle = "FixedDialog"
+$form.MaximizeBox = $false
+$form.MinimizeBox = $false
+$form.BackColor = [System.Drawing.Color]::FromArgb(18, 18, 22)
+$form.ForeColor = [System.Drawing.Color]::FromArgb(230, 230, 235)
+$form.TopMost = $true
+if (Test-Path $IconPath) {
+  try { $form.Icon = New-Object System.Drawing.Icon($IconPath) } catch { }
 }
 
-function Fail($msg) {
-  Write-Host ""
-  Write-Host "!! $msg" -ForegroundColor Red
-  Add-Content -Path $LogFile -Value "[$(Get-Date -Format o)] FAIL: $msg"
-  Write-Host ""
-  Write-Host "Press any key to close..." -ForegroundColor DarkGray
-  [void][System.Console]::ReadKey($true)
+$title = New-Object System.Windows.Forms.Label
+$title.Text = "RASPBERRY"
+$title.Font = New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold)
+$title.ForeColor = [System.Drawing.Color]::FromArgb(220, 90, 130)
+$title.Location = New-Object System.Drawing.Point(24, 20)
+$title.Size = New-Object System.Drawing.Size(480, 36)
+$form.Controls.Add($title)
+
+$sub = New-Object System.Windows.Forms.Label
+$sub.Text = "Checking for updates..."
+$sub.Font = New-Object System.Drawing.Font("Segoe UI", 10)
+$sub.ForeColor = [System.Drawing.Color]::FromArgb(180, 180, 190)
+$sub.Location = New-Object System.Drawing.Point(24, 62)
+$sub.Size = New-Object System.Drawing.Size(480, 22)
+$form.Controls.Add($sub)
+
+$progress = New-Object System.Windows.Forms.ProgressBar
+$progress.Location = New-Object System.Drawing.Point(24, 96)
+$progress.Size = New-Object System.Drawing.Size(480, 16)
+$progress.Style = "Marquee"
+$progress.MarqueeAnimationSpeed = 25
+$form.Controls.Add($progress)
+
+$status = New-Object System.Windows.Forms.Label
+$status.Text = ""
+$status.Font = New-Object System.Drawing.Font("Consolas", 9)
+$status.ForeColor = [System.Drawing.Color]::FromArgb(140, 200, 160)
+$status.Location = New-Object System.Drawing.Point(24, 124)
+$status.Size = New-Object System.Drawing.Size(480, 80)
+$form.Controls.Add($status)
+
+$closeBtn = New-Object System.Windows.Forms.Button
+$closeBtn.Text = "Close"
+$closeBtn.Location = New-Object System.Drawing.Point(424, 212)
+$closeBtn.Size = New-Object System.Drawing.Size(80, 28)
+$closeBtn.BackColor = [System.Drawing.Color]::FromArgb(40, 40, 46)
+$closeBtn.ForeColor = [System.Drawing.Color]::FromArgb(230, 230, 235)
+$closeBtn.FlatStyle = "Flat"
+$closeBtn.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(80, 80, 88)
+$closeBtn.Enabled = $false
+$closeBtn.Add_Click({ $form.Close() })
+$form.Controls.Add($closeBtn)
+
+$form.Show()
+$form.Activate()
+[System.Windows.Forms.Application]::DoEvents()
+
+function Set-Step {
+  param([string]$Caption)
+  $sub.Text = $Caption
+  Add-Content -Path $LogFile -Value "[$(Get-Date -Format o)] $Caption"
+  [System.Windows.Forms.Application]::DoEvents()
+}
+function Set-Status {
+  param([string]$Line, [bool]$Ok = $true)
+  $status.ForeColor = if ($Ok) {
+    [System.Drawing.Color]::FromArgb(140, 200, 160)
+  } else {
+    [System.Drawing.Color]::FromArgb(230, 120, 120)
+  }
+  $status.Text = $Line
+  [System.Windows.Forms.Application]::DoEvents()
+}
+function Fail-With {
+  param([string]$Msg)
+  Set-Step "Update failed"
+  Set-Status $Msg $false
+  $progress.Style = "Blocks"
+  $progress.Value = 0
+  $closeBtn.Enabled = $true
+  Add-Content -Path $LogFile -Value "[$(Get-Date -Format o)] FAIL: $Msg"
+  [System.Windows.Forms.Application]::Run($form)
   exit 1
 }
 
-# banner
-Clear-Host
-Write-Host "  R A S P B E R R Y   U P D A T E R" -ForegroundColor Magenta
-Write-Host "  ---------------------------------" -ForegroundColor DarkMagenta
-Write-Host "  repo: $RepoRoot"
-Write-Host ""
+# --- pipeline ---------------------------------------------------------------
 
-# 0. Close running Raspberry (if any)
-Write-Step "Closing any running Raspberry window"
-Get-Process -Name "Raspberry" -ErrorAction SilentlyContinue | ForEach-Object {
-  try { $_.CloseMainWindow() | Out-Null } catch { }
-}
-Start-Sleep -Seconds 1
-Get-Process -Name "Raspberry" -ErrorAction SilentlyContinue | ForEach-Object {
-  Write-Host "   still open — force-closing PID $($_.Id)" -ForegroundColor DarkYellow
-  try { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue } catch { }
-}
-
-# 1. Move to repo
-if (-not (Test-Path $RepoRoot)) { Fail "Repo folder missing: $RepoRoot" }
-Set-Location $RepoRoot
-
-# 2. Snapshot package.json + lockfile hashes so we can skip npm install when nothing changed
-function Get-DepsHash {
-  $files = @("package.json", "package-lock.json", "apps\hub\package.json")
-  $hash = ""
-  foreach ($f in $files) {
-    $p = Join-Path $RepoRoot $f
-    if (Test-Path $p) { $hash += (Get-FileHash $p -Algorithm SHA256).Hash }
+try {
+  Set-Step "Closing any running Raspberry window"
+  Get-Process -Name "raspberry-hub","Raspberry" -ErrorAction SilentlyContinue | ForEach-Object {
+    try { $_.CloseMainWindow() | Out-Null } catch { }
   }
-  return $hash
+  Start-Sleep -Milliseconds 800
+  Get-Process -Name "raspberry-hub","Raspberry" -ErrorAction SilentlyContinue | ForEach-Object {
+    try { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue } catch { }
+  }
+
+  if (-not (Test-Path $RepoRoot)) { Fail-With "Repo missing: $RepoRoot" }
+  Set-Location $RepoRoot
+
+  function Get-DepsHash {
+    $files = @("package.json", "package-lock.json", "apps\hub\package.json")
+    $h = ""
+    foreach ($f in $files) {
+      $p = Join-Path $RepoRoot $f
+      if (Test-Path $p) { $h += (Get-FileHash $p -Algorithm SHA256).Hash }
+    }
+    return $h
+  }
+  $depsBefore = Get-DepsHash
+
+  Set-Step "Pulling latest from GitHub"
+  $pullOut = & git pull --ff-only 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    Fail-With "git pull failed: $($pullOut -join '; ')"
+  }
+  $tail = ($pullOut | Select-Object -Last 3 | Out-String).Trim()
+  if ($tail) { Set-Status $tail }
+
+  $depsAfter = Get-DepsHash
+  if ($depsBefore -ne $depsAfter) {
+    Set-Step "Dependencies changed — running npm install"
+    & npm install --no-audit --no-fund 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { Fail-With "npm install failed" }
+  } else {
+    Set-Status "Dependencies unchanged."
+  }
+
+  Set-Step "Building Raspberry (Rust compile — first build can take several minutes)"
+  $buildLog = Join-Path $env:TEMP "raspberry-update-build.log"
+  if (Test-Path $buildLog) { Remove-Item $buildLog -Force }
+
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName  = "cmd.exe"
+  $psi.Arguments = "/c npm run tauri:build > `"$buildLog`" 2>&1"
+  $psi.WorkingDirectory = $RepoRoot
+  $psi.WindowStyle = "Hidden"
+  $psi.CreateNoWindow = $true
+  $psi.UseShellExecute = $false
+  $proc = [System.Diagnostics.Process]::Start($psi)
+
+  while (-not $proc.HasExited) {
+    Start-Sleep -Milliseconds 500
+    [System.Windows.Forms.Application]::DoEvents()
+    if (Test-Path $buildLog) {
+      $lastLine = (Get-Content $buildLog -Tail 1 -ErrorAction SilentlyContinue)
+      if ($lastLine) { Set-Status ($lastLine.TrimEnd()) }
+    }
+  }
+  if ($proc.ExitCode -ne 0) {
+    $tailLog = ""
+    if (Test-Path $buildLog) { $tailLog = (Get-Content $buildLog -Tail 10 | Out-String).Trim() }
+    Fail-With "Build failed (exit $($proc.ExitCode)).`n$tailLog"
+  }
+
+  if (-not (Test-Path $ExePath)) {
+    Fail-With "Build finished but exe missing at:`n$ExePath"
+  }
+
+  Set-Step "Launching Raspberry"
+  Start-Process -FilePath $ExePath
+  Set-Status "Update complete. Raspberry is opening..."
+  $progress.Style = "Blocks"
+  $progress.Value = 100
+  $closeBtn.Enabled = $true
+
+  # Auto-close after 3s
+  $autoclose = New-Object System.Windows.Forms.Timer
+  $autoclose.Interval = 3000
+  $autoclose.Add_Tick({ $autoclose.Stop(); $form.Close() })
+  $autoclose.Start()
+  [System.Windows.Forms.Application]::Run($form)
+} catch {
+  Fail-With "$_"
 }
-$depsBefore = Get-DepsHash
-
-# 3. Git pull
-Write-Step "Pulling latest from GitHub"
-$pullOutput = & git pull --ff-only 2>&1
-$pullOutput | ForEach-Object { Write-Host "   $_" -ForegroundColor DarkGray }
-if ($LASTEXITCODE -ne 0) {
-  Fail "git pull failed. Check that you have no local changes: `git status`"
-}
-
-# 4. npm install only if deps changed
-$depsAfter = Get-DepsHash
-if ($depsBefore -ne $depsAfter) {
-  Write-Step "Dependencies changed — running npm install"
-  & npm install --no-audit --no-fund
-  if ($LASTEXITCODE -ne 0) { Fail "npm install failed" }
-} else {
-  Write-Step "Dependencies unchanged — skipping npm install"
-}
-
-# 5. Build
-Write-Step "Building Raspberry (this can take a few minutes on the first pull)"
-& npm run tauri:build
-if ($LASTEXITCODE -ne 0) { Fail "npm run tauri:build failed. See output above." }
-
-# 6. Launch
-Write-Step "Launching Raspberry"
-if (-not (Test-Path $ExePath)) { Fail "Build finished but exe not found at: $ExePath" }
-Start-Process -FilePath $ExePath
-
-Write-Host ""
-Write-Host "  Done. Raspberry is opening." -ForegroundColor Green
-Start-Sleep -Seconds 2

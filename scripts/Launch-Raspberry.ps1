@@ -1,18 +1,21 @@
-# Raspberry — fast launcher.
+# Raspberry — fast launcher (fallback / debug).
 #
-# Just runs the already-built Raspberry.exe (no rebuild).
-# Use this shortcut for daily "open the app". Use Update-Raspberry.ps1 (or its
-# desktop shortcut) when you actually want the latest code from GitHub.
+# The primary desktop shortcut targets raspberry-hub.exe DIRECTLY (see
+# Install-Shortcuts.ps1), which is faster, gets the app icon natively,
+# and never flashes a PowerShell console. This script exists as a
+# manual/debug launcher and as a safety net if the exe path ever moves.
 
 $RepoRoot = Split-Path $PSScriptRoot -Parent
-$ExePath  = Join-Path $RepoRoot "apps\hub\src-tauri\target\release\Raspberry.exe"
+$ExePath  = Join-Path $RepoRoot "target\release\raspberry-hub.exe"
 
 if (-not (Test-Path $ExePath)) {
-  Write-Host "Raspberry.exe not found — run Update-Raspberry.ps1 first to build it." -ForegroundColor Red
-  Write-Host "   expected: $ExePath" -ForegroundColor DarkGray
-  Write-Host ""
-  Write-Host "Press any key to close..." -ForegroundColor DarkGray
-  [void][System.Console]::ReadKey($true)
+  Add-Type -AssemblyName System.Windows.Forms | Out-Null
+  [System.Windows.Forms.MessageBox]::Show(
+    "raspberry-hub.exe not found. Double-click 'Update Raspberry' on your Desktop to build it.`n`nExpected:`n$ExePath",
+    "Raspberry",
+    [System.Windows.Forms.MessageBoxButtons]::OK,
+    [System.Windows.Forms.MessageBoxIcon]::Warning
+  ) | Out-Null
   exit 1
 }
 
