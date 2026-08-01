@@ -25,6 +25,7 @@ import { target, type SystemSnapshot } from "@/target";
 import { bus } from "@/lib/bus";
 import { formatBytes, formatPercent, formatRate, formatUptime } from "@/lib/format";
 import { useAppStore } from "@/state/useAppStore";
+import { SectionHeroRow } from "./SectionHeroRow";
 
 const REFRESH_MS = 2000;
 
@@ -72,6 +73,9 @@ export function CommandDeckPanel({ manifest }: { manifest: ModuleManifest }) {
       <div className="flex flex-col gap-4">
         {/* Machine hero */}
         <HeroCard snap={snap} />
+
+        {/* Section hero tiles */}
+        <SectionHeroRow />
 
         {/* Vital stats */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
