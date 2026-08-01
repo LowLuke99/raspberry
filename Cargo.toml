@@ -6,7 +6,7 @@ resolver = "2"
 members = ["apps/hub/src-tauri", "apps/agent", "crates/core"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.7.0"
 edition = "2021"
 authors = ["Papa Luke"]
 

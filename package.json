@@ -1,6 +1,6 @@
 {
   "name": "raspberry",
-  "version": "0.1.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Raspberry — one glass panel, every machine on your LAN. Phase 1: shell & design system.",
   "workspaces": [

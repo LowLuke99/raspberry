@@ -136,12 +136,28 @@ try {
   $depsBefore = Get-DepsHash
 
   Set-Step "Pulling latest from GitHub"
+  # Auto-stash any local edits so a fast-forward pull can't be blocked by a
+  # dirty tree — recovers gracefully from "your local changes would be
+  # overwritten" instead of dying on the user.
+  $dirty = (& git status --porcelain 2>&1) -join ""
+  $stashed = $false
+  if ($dirty) {
+    Set-Status "Local changes detected — stashing before pull."
+    & git stash push -u -m "raspberry-updater auto-stash $(Get-Date -Format o)" 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) { $stashed = $true }
+  }
   $pullOut = & git pull --ff-only 2>&1
   if ($LASTEXITCODE -ne 0) {
+    if ($stashed) { & git stash pop 2>&1 | Out-Null }
     Fail-With "git pull failed: $($pullOut -join '; ')"
   }
-  $tail = ($pullOut | Select-Object -Last 3 | Out-String).Trim()
-  if ($tail) { Set-Status $tail }
+  if ($stashed) {
+    & git stash pop 2>&1 | Out-Null
+    Set-Status "Local changes restored on top of the pull."
+  } else {
+    $tail = ($pullOut | Select-Object -Last 3 | Out-String).Trim()
+    if ($tail) { Set-Status $tail }
+  }
 
   $depsAfter = Get-DepsHash
   if ($depsBefore -ne $depsAfter) {
@@ -181,6 +197,17 @@ try {
 
   if (-not (Test-Path $ExePath)) {
     Fail-With "Build finished but exe missing at:`n$ExePath"
+  }
+
+  # Refresh desktop + Start Menu shortcuts so they always point at the freshly
+  # built exe (safe to re-run; overwrites in place). If the shortcuts install
+  # script is missing for any reason, don't fail the update — just skip.
+  $shortcutScript = Join-Path $RepoRoot "scripts\Install-Shortcuts.ps1"
+  if (Test-Path $shortcutScript) {
+    Set-Step "Refreshing desktop shortcuts"
+    try {
+      & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $shortcutScript 2>&1 | Out-Null
+    } catch { }
   }
 
   Set-Step "Launching Raspberry"

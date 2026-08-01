@@ -3,6 +3,9 @@ import { useAppStore } from "@/state/useAppStore";
 import { RaspberryLogo } from "@/ui/Logo";
 import { IconButton } from "@/ui/IconButton";
 import { MachineChip } from "./MachineChip";
+import pkg from "../../package.json";
+
+const APP_VERSION = (pkg as { version: string }).version;
 
 /**
  * Top bar (spec §6): brand, active-machine chip, Ctrl+K search trigger,
@@ -23,6 +26,12 @@ export function TopBar() {
         <RaspberryLogo size={22} />
         <span className="text-[14px] font-semibold tracking-tight text-text">
           Raspberry
+        </span>
+        <span
+          className="mono rounded-[5px] bg-surface-hi px-1.5 py-0.5 text-[10px] text-text-dim"
+          title={`Raspberry v${APP_VERSION}`}
+        >
+          v{APP_VERSION}
         </span>
       </div>
 

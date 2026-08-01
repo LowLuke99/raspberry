@@ -4,6 +4,30 @@ use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
 
+/// Windows CREATE_NO_WINDOW — the missing flag that lets a Tauri release exe
+/// (GUI subsystem) spawn console tools like ping / arp WITHOUT flashing a new
+/// console window per child. Without this, a /24 deep scan opens dozens of
+/// black cmd windows because there's no parent console for the child to
+/// inherit.
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// Build a `Command` for a console tool that never shows a window on Windows.
+/// On other platforms this is just `Command::new(program)`.
+fn hidden_command(program: &str) -> Command {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        let mut cmd = Command::new(program);
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Command::new(program)
+    }
+}
+
 #[derive(Serialize, Clone, Debug)]
 pub struct NetInterface {
     pub name: String,
@@ -99,9 +123,10 @@ pub fn scan_lan_deep() -> Vec<LanDevice> {
         }
     }
 
-    // Bounded worker pool. ~32 concurrent processes finishes a /24 in under
-    // 2s on most machines without spiking the system.
-    const WORKERS: usize = 32;
+    // Bounded worker pool. 16 concurrent pings finishes a /24 in ~2-4s and
+    // keeps the process count low enough that Windows never runs out of
+    // console-attach slots even under load.
+    const WORKERS: usize = 16;
     let (tx, rx) = mpsc::channel::<(String, Option<String>, Option<u32>)>();
     let chunk_size = hosts.len().div_ceil(WORKERS);
     let mut handles = Vec::with_capacity(WORKERS);
@@ -138,7 +163,7 @@ pub fn scan_lan_deep() -> Vec<LanDevice> {
 
 /// Parse `arp -a` into `LanDevice` rows, skipping multicast / broadcast noise.
 fn read_arp_cache() -> Vec<LanDevice> {
-    let Ok(out) = Command::new("arp").arg("-a").output() else {
+    let Ok(out) = hidden_command("arp").arg("-a").output() else {
         return Vec::new();
     };
     let text = String::from_utf8_lossy(&out.stdout);
@@ -182,7 +207,7 @@ fn read_arp_cache() -> Vec<LanDevice> {
 /// (`-w 250`). Parses the output for the resolved name and RTT.
 fn probe_host(ip: Ipv4Addr) -> (Option<String>, Option<u32>) {
     let ip_s = ip.to_string();
-    let out = Command::new("ping")
+    let out = hidden_command("ping")
         .args(["-a", "-n", "1", "-w", "250", &ip_s])
         .output();
     let Ok(out) = out else {
