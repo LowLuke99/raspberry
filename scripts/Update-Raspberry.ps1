@@ -1,13 +1,17 @@
-# Raspberry — one-click updater with a WinForms progress UI.
+# Raspberry - one-click updater with a WinForms progress UI.
 #
 # Launched two ways:
 #   1. Direct double-click on the "Update Raspberry" shortcut (via Update-Silent.vbs)
-#      → no console window, just the dark WinForms dialog
+#      -> no console window, just the dark WinForms dialog
 #   2. Debug mode: right-click .ps1 -> Run with PowerShell (console + dialog)
 #
 # Pipeline: close running app -> git pull -> npm install if deps changed ->
 # tauri build -> launch fresh raspberry-hub.exe. Every step reports into the
 # UI so the user sees progress instead of a mysterious silent process.
+#
+# NOTE: this file is intentionally pure ASCII. PowerShell 5.1 reads .ps1
+# files in the system ANSI codepage, which mangles unicode em-dashes /
+# arrows and turns them into parse errors. Keep it ASCII forever.
 
 $ErrorActionPreference = "Stop"
 $RepoRoot   = Split-Path $PSScriptRoot -Parent
@@ -137,12 +141,12 @@ try {
 
   Set-Step "Pulling latest from GitHub"
   # Auto-stash any local edits so a fast-forward pull can't be blocked by a
-  # dirty tree — recovers gracefully from "your local changes would be
+  # dirty tree. Recovers gracefully from "your local changes would be
   # overwritten" instead of dying on the user.
   $dirty = (& git status --porcelain 2>&1) -join ""
   $stashed = $false
   if ($dirty) {
-    Set-Status "Local changes detected — stashing before pull."
+    Set-Status "Local changes detected - stashing before pull."
     & git stash push -u -m "raspberry-updater auto-stash $(Get-Date -Format o)" 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) { $stashed = $true }
   }
@@ -161,14 +165,14 @@ try {
 
   $depsAfter = Get-DepsHash
   if ($depsBefore -ne $depsAfter) {
-    Set-Step "Dependencies changed — running npm install"
+    Set-Step "Dependencies changed - running npm install"
     & npm install --no-audit --no-fund 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { Fail-With "npm install failed" }
   } else {
     Set-Status "Dependencies unchanged."
   }
 
-  Set-Step "Building Raspberry (Rust compile — first build can take several minutes)"
+  Set-Step "Building Raspberry (Rust compile - first build can take several minutes)"
   $buildLog = Join-Path $env:TEMP "raspberry-update-build.log"
   if (Test-Path $buildLog) { Remove-Item $buildLog -Force }
 
@@ -201,7 +205,7 @@ try {
 
   # Refresh desktop + Start Menu shortcuts so they always point at the freshly
   # built exe (safe to re-run; overwrites in place). If the shortcuts install
-  # script is missing for any reason, don't fail the update — just skip.
+  # script is missing for any reason, don't fail the update - just skip.
   $shortcutScript = Join-Path $RepoRoot "scripts\Install-Shortcuts.ps1"
   if (Test-Path $shortcutScript) {
     Set-Step "Refreshing desktop shortcuts"
