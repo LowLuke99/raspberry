@@ -74,6 +74,10 @@ export interface LanDevice {
   mac: string;
   vendor: string;
   kind: string;
+  /** Reverse-DNS / NetBIOS name, only populated by `scanLanDeep`. */
+  hostname: string | null;
+  /** Ping RTT in ms from the deep scan; null for the fast ARP-only scan. */
+  latency_ms: number | null;
 }
 
 export interface PhysicalDisk {
@@ -146,6 +150,7 @@ export interface Target {
   roots(): Promise<string[]>;
   networkInfo(): Promise<NetworkInfo>;
   scanLan(): Promise<LanDevice[]>;
+  scanLanDeep(): Promise<LanDevice[]>;
   wakeOnLan(mac: string): Promise<void>;
   storageDisks(): Promise<PhysicalDisk[]>;
   securityStatus(): Promise<SecuritySnapshot>;

@@ -13,7 +13,9 @@ mod winshell;
 
 pub use files::{list_dir, list_roots, home_dir, FileEntry};
 pub use logs::{read_events, LogEvent};
-pub use net::{network_info, scan_lan, wake_on_lan, LanDevice, NetInterface, NetworkInfo};
+pub use net::{
+    network_info, scan_lan, scan_lan_deep, wake_on_lan, LanDevice, NetInterface, NetworkInfo,
+};
 pub use process::{kill_process, list_processes, ProcessInfo};
 pub use security::{
     security_snapshot, BitlockerVolume, DefenderStatus, FirewallProfile, HotFix, SecuritySnapshot,

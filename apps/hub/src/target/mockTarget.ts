@@ -136,12 +136,27 @@ export const mockTarget: Target = {
   },
 
   async scanLan(): Promise<LanDevice[]> {
+    // Fast scan mirrors what `arp -a` typically returns — a small handful of
+    // recently-active hosts, no hostnames, no latency.
     return [
-      { ip: "192.168.1.1", mac: "3c:5a:b4:11:22:33", vendor: "Google", kind: "dynamic" },
-      { ip: "192.168.1.42", mac: "a4:83:e7:1c:2d:3e", vendor: "Apple", kind: "dynamic" },
-      { ip: "192.168.1.58", mac: "b8:27:eb:9a:1f:04", vendor: "Raspberry Pi", kind: "dynamic" },
-      { ip: "192.168.1.77", mac: "00:15:5d:aa:bb:cc", vendor: "Microsoft (Hyper-V)", kind: "dynamic" },
-      { ip: "192.168.1.90", mac: "dc:a6:32:44:55:66", vendor: "Raspberry Pi", kind: "dynamic" },
+      { ip: "192.168.1.1", mac: "3c:5a:b4:11:22:33", vendor: "Google / Nest", kind: "dynamic", hostname: null, latency_ms: null },
+      { ip: "192.168.1.42", mac: "a4:83:e7:1c:2d:3e", vendor: "Apple", kind: "dynamic", hostname: null, latency_ms: null },
+      { ip: "192.168.1.90", mac: "dc:a6:32:44:55:66", vendor: "Raspberry Pi", kind: "dynamic", hostname: null, latency_ms: null },
+    ];
+  },
+
+  async scanLanDeep(): Promise<LanDevice[]> {
+    // Deep scan simulates the /24 sweep — more hosts, hostnames + latency.
+    await new Promise((r) => setTimeout(r, 1400));
+    return [
+      { ip: "192.168.1.1", mac: "3c:5a:b4:11:22:33", vendor: "Google / Nest", kind: "dynamic", hostname: "gateway", latency_ms: 1 },
+      { ip: "192.168.1.15", mac: "e0:37:17:aa:bb:cc", vendor: "Sonos", kind: "dynamic", hostname: "Sonos-Kitchen", latency_ms: 4 },
+      { ip: "192.168.1.42", mac: "a4:83:e7:1c:2d:3e", vendor: "Apple", kind: "dynamic", hostname: "lukes-macbook", latency_ms: 3 },
+      { ip: "192.168.1.58", mac: "b8:27:eb:9a:1f:04", vendor: "Raspberry Pi", kind: "dynamic", hostname: "pi-hole", latency_ms: 2 },
+      { ip: "192.168.1.77", mac: "00:15:5d:aa:bb:cc", vendor: "Microsoft (Hyper-V)", kind: "dynamic", hostname: "TOWER-01", latency_ms: 0 },
+      { ip: "192.168.1.90", mac: "dc:a6:32:44:55:66", vendor: "Raspberry Pi", kind: "dynamic", hostname: "octoprint", latency_ms: 5 },
+      { ip: "192.168.1.102", mac: "44:65:0d:11:22:33", vendor: "Amazon", kind: "dynamic", hostname: "echo-living-room", latency_ms: 12 },
+      { ip: "192.168.1.150", mac: "b0:a7:37:44:55:66", vendor: "Roku", kind: "dynamic", hostname: "Roku-Bedroom", latency_ms: 9 },
     ];
   },
 

@@ -9,7 +9,7 @@ mod terminal;
 use std::sync::Mutex;
 
 use raspberry_core::{
-    home_dir, list_dir, list_roots, read_events, security_snapshot, list_physical_disks,
+    home_dir, list_dir, list_physical_disks, list_roots, read_events, security_snapshot,
     FileEntry, LanDevice, LogEvent, Monitor, NetworkInfo, PhysicalDisk, ProcessInfo,
     SecuritySnapshot, SystemSnapshot,
 };
@@ -75,6 +75,16 @@ fn network_scan() -> Vec<LanDevice> {
     raspberry_core::scan_lan()
 }
 
+/// Deep scan: parallel-pings the local /24 to prime ARP, then re-reads it
+/// with hostname + latency attached. Blocks for ~1-3s; the frontend shows
+/// scanning state while it runs.
+#[tauri::command]
+async fn network_scan_deep() -> Vec<LanDevice> {
+    tauri::async_runtime::spawn_blocking(raspberry_core::scan_lan_deep)
+        .await
+        .unwrap_or_default()
+}
+
 /// Send a Wake-on-LAN magic packet. State-changing but LAN-local and harmless
 /// (worst case: nothing wakes); the frontend still confirms before calling.
 #[tauri::command]
@@ -113,6 +123,7 @@ pub fn run() {
             files_roots,
             network_info,
             network_scan,
+            network_scan_deep,
             wake_on_lan,
             storage_disks,
             security_status,

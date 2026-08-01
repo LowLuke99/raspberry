@@ -27,6 +27,7 @@ export const localTarget: Target = {
   roots: () => invoke<string[]>("files_roots"),
   networkInfo: () => invoke<NetworkInfo>("network_info"),
   scanLan: () => invoke<LanDevice[]>("network_scan"),
+  scanLanDeep: () => invoke<LanDevice[]>("network_scan_deep"),
   wakeOnLan: (mac) => invoke<void>("wake_on_lan", { mac }),
   storageDisks: () => invoke<PhysicalDisk[]>("storage_disks"),
   securityStatus: () => invoke<SecuritySnapshot>("security_status"),
