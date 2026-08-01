@@ -1,8 +1,9 @@
 use serde::Serialize;
-use std::net::{Ipv4Addr, UdpSocket};
+use std::net::{Ipv4Addr, SocketAddr, TcpStream, ToSocketAddrs, UdpSocket};
 use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
+use std::time::{Duration, Instant};
 
 /// Windows CREATE_NO_WINDOW — the missing flag that lets a Tauri release exe
 /// (GUI subsystem) spawn console tools like ping / arp WITHOUT flashing a new
@@ -380,4 +381,60 @@ fn oui_vendor(mac: &str) -> &'static str {
 
         _ => "Unknown",
     }
+}
+
+// ── Port checker (Toolbox) ─────────────────────────────────────────────────
+
+/// Result of a TCP port probe. `latency_ms` is None when the port is closed
+/// or the probe failed.
+#[derive(Serialize, Clone, Debug)]
+pub struct PortCheckResult {
+    pub host: String,
+    pub port: u16,
+    pub open: bool,
+    pub latency_ms: Option<u64>,
+    pub error: Option<String>,
+}
+
+/// Attempt a TCP connect to `host:port` with a bounded timeout. Resolves
+/// hostnames via the OS. Returns a structured result instead of erroring out
+/// on refused connections — a "closed" port is a valid answer, not a failure.
+pub fn tcp_port_check(host: &str, port: u16, timeout_ms: u64) -> PortCheckResult {
+    let host = host.trim();
+    let timeout = Duration::from_millis(timeout_ms.clamp(100, 10_000));
+    let mut result = PortCheckResult {
+        host: host.to_string(),
+        port,
+        open: false,
+        latency_ms: None,
+        error: None,
+    };
+
+    let addrs: Vec<SocketAddr> = match (host, port).to_socket_addrs() {
+        Ok(iter) => iter.collect(),
+        Err(e) => {
+            result.error = Some(format!("resolve failed: {e}"));
+            return result;
+        }
+    };
+    if addrs.is_empty() {
+        result.error = Some("no addresses for host".into());
+        return result;
+    }
+
+    let t0 = Instant::now();
+    // Try each resolved address; the first one that connects wins.
+    for addr in addrs {
+        match TcpStream::connect_timeout(&addr, timeout) {
+            Ok(_stream) => {
+                result.open = true;
+                result.latency_ms = Some(t0.elapsed().as_millis() as u64);
+                return result;
+            }
+            Err(e) => {
+                result.error = Some(e.to_string());
+            }
+        }
+    }
+    result
 }

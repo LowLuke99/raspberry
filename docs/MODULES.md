@@ -35,7 +35,7 @@ explicit click.
 | **Security** | Defender + Firewall + BitLocker + UAC + last 20 updates + posture score. |
 | **Graphs** | Live line charts for CPU/mem/net. |
 | **Logs** | Windows Event Log viewer — System / Application / Security. |
-| **Dev Toolbox** | JSON pretty-print, Base64, UUID, SHA-256, timestamps. Offline. |
+| **Toolbox** | Practical, offline utilities — TCP port check, secure password generator, WiFi/URL QR codes, UUID v4, Unix timestamp. See [Toolbox](#toolbox). |
 
 ## Coming later
 
@@ -85,6 +85,29 @@ A separate binary — [`raspberry-agent`](AGENT.md) — lets a Hub on one PC
 observe another PC over the LAN. Add machines via the top-left chip; the
 whole app retargets on click. Read-only in v0.1. Full details in
 [AGENT.md](AGENT.md).
+
+## Toolbox
+
+Six little tools that all fit the "controlling a machine on your LAN" theme.
+Everything runs locally — nothing on this panel makes a network request
+except **Port Check**, which does a bounded (1.5s) TCP connect from your
+Hub.
+
+| Tab | What it does |
+|---|---|
+| **Port Check** | TCP connect to `host:port` with hostname resolution + latency. Quick-buttons for SSH · HTTP · HTTPS · RDP · VNC · Raspberry Agent (:8848). |
+| **Password** | Cryptographically-random password (`crypto.getRandomValues`). Toggle a-z / A-Z / 0-9 / symbols; live entropy read-out (strong ≥ 128 bits). |
+| **QR** | Any text or URL → QR code (transparent PNG, error-correction M). Great for one-off links or shared config strings. |
+| **WiFi QR** | Generates a proper `WIFI:S:…;T:…;P:…;;` code — point any phone camera and it joins. Supports WPA/WEP/Open + hidden SSIDs. Nothing leaves your PC. |
+| **UUID** | Five v4 UUIDs per click, each with a copy button. |
+| **Timestamp** | Unix ↔ ISO 8601 / local / UTC, with a live "now" tick every second. |
+
+## Machine switching (Ctrl+K)
+
+The command palette now surfaces a `Switch to: <machine>` entry for every
+registered agent (plus **This PC**). Open the palette (`Ctrl+K`), type a
+machine name, hit Enter — the whole app retargets without touching the
+top-bar chip.
 
 **Live health polling (Phase 7):** the chip now probes every registered
 agent's `/health` endpoint every 5 seconds. Each row in the popover shows

@@ -16,7 +16,8 @@ mod winshell;
 pub use files::{list_dir, list_roots, home_dir, FileEntry};
 pub use logs::{read_events, LogEvent};
 pub use net::{
-    network_info, scan_lan, scan_lan_deep, wake_on_lan, LanDevice, NetInterface, NetworkInfo,
+    network_info, scan_lan, scan_lan_deep, tcp_port_check, wake_on_lan, LanDevice, NetInterface,
+    NetworkInfo, PortCheckResult,
 };
 pub use packages::{
     install as packages_install, list_installed as packages_list_installed,

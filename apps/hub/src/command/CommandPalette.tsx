@@ -3,10 +3,11 @@ import { motion } from "framer-motion";
 import { Search, CornerDownLeft, Copy, Check, type LucideIcon } from "lucide-react";
 import { registry } from "@/modules/registry";
 import { useAppStore } from "@/state/useAppStore";
+import { useAgents, LOCAL_ID } from "@/state/useAgents";
 import { cn } from "@/lib/cn";
 import { matchCommands, type Command } from "./matchCommands";
 import { COMMANDS as WIN_COMMANDS } from "@/modules/commands/catalog";
-import { BookText, ShieldAlert } from "lucide-react";
+import { BookText, ShieldAlert, Monitor, Radio } from "lucide-react";
 
 /** A runnable palette entry (extends the matchable Command shape). */
 interface PaletteCommand extends Command {
@@ -33,6 +34,9 @@ export function CommandPalette() {
   const open = useAppStore((s) => s.commandOpen);
   const setOpen = useAppStore((s) => s.setCommandOpen);
   const setActiveRoute = useAppStore((s) => s.setActiveRoute);
+  const agents = useAgents((s) => s.agents);
+  const activeAgentId = useAgents((s) => s.activeId);
+  const setActiveAgent = useAgents((s) => s.setActive);
 
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -52,6 +56,32 @@ export function CommandPalette() {
       })),
     [setActiveRoute],
   );
+
+  const machineCommands = useMemo<PaletteCommand[]>(() => {
+    const entries: PaletteCommand[] = [
+      {
+        id: `machine:${LOCAL_ID}`,
+        label: "Switch to: This PC",
+        hint: activeAgentId === LOCAL_ID ? "active target" : "local target",
+        keywords: ["machine", "switch", "local", "this pc", "target", "agent"],
+        icon: Monitor,
+        kind: "jump",
+        run: () => setActiveAgent(LOCAL_ID),
+      },
+    ];
+    for (const a of agents) {
+      entries.push({
+        id: `machine:${a.id}`,
+        label: `Switch to: ${a.name}`,
+        hint: activeAgentId === a.id ? `active · ${a.baseUrl}` : a.baseUrl,
+        keywords: ["machine", "switch", "agent", "remote", a.name, a.baseUrl],
+        icon: Radio,
+        kind: "jump",
+        run: () => setActiveAgent(a.id),
+      });
+    }
+    return entries;
+  }, [agents, activeAgentId, setActiveAgent]);
 
   const winCommands = useMemo<PaletteCommand[]>(
     () =>
@@ -79,9 +109,9 @@ export function CommandPalette() {
 
   const results = useMemo(() => {
     const q = query.trim();
-    if (!q) return moduleCommands;
-    return matchCommands(q, [...moduleCommands, ...winCommands]);
-  }, [query, moduleCommands, winCommands]);
+    if (!q) return [...moduleCommands, ...machineCommands];
+    return matchCommands(q, [...moduleCommands, ...machineCommands, ...winCommands]);
+  }, [query, moduleCommands, machineCommands, winCommands]);
 
   useEffect(() => {
     if (open) {

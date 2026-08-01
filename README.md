@@ -40,7 +40,7 @@ That's the whole daily workflow. No terminal needed.
 Card · Tweaks · Identity (OSINT) · LocalSend · Kernel Inspector
 
 **System** — System Monitor · Process Explorer · Network · LAN Manager ·
-Files · Storage · Security · Graphs · Logs · Dev Toolbox
+Files · Storage · Security · Graphs · Logs · Toolbox
 
 **Deck** — the home screen: live tiles + jump grid
 
@@ -113,9 +113,25 @@ modules and a UX upgrade for the machine picker.
   (up · ≤1.2s RTT), amber (slow), red (offline), and every row in the
   machine popover shows its own live RTT tag.
 
-**Next: Phase 7.1** — Command Deck sparklines (per-agent CPU/RAM history),
-per-agent Sysinfo Card diff view, and Ctrl+K palette entries to switch
-machines.
+**Phase 7.1 — Toolbox + palette machine switch** ✅ — the old "Dev Toolbox"
+was a bag of text utilities (JSON pretty-print, Base64, SHA-256 of text)
+that any browser devtools already does. Replaced with practical utilities
+that fit a LAN control panel:
+- **Port Check** — TCP connect (host + port) with hostname resolution and
+  latency, backed by a new Rust `tcp_port_check` in `raspberry-core`.
+  Quick-buttons for SSH · HTTP · HTTPS · RDP · VNC · Raspberry Agent.
+- **Password Generator** — cryptographically-random (`crypto.getRandomValues`)
+  with configurable charset and a live entropy read-out.
+- **WiFi QR** — generates the official `WIFI:S:…;T:…;P:…;;` code so any
+  phone camera can join your network in one tap. Fully offline.
+- **URL/Text QR**, **UUID v4**, **Timestamp** (Unix ↔ ISO 8601 / local / UTC,
+  with a live "now" tick).
+
+Also: **Ctrl+K** now surfaces `Switch to: <machine>` entries for every
+registered agent, so you can retarget without touching the top-bar chip.
+
+**Next: Phase 7.2** — Command Deck sparklines (per-agent CPU/RAM history)
+and per-agent Sysinfo Card diff view.
 
 **Then: Phase 8 — hardening** — mTLS transport, per-command allow-listing on
 the agent, and one-click Windows-service install so the agent survives a

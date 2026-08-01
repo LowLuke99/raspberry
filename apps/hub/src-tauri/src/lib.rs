@@ -12,8 +12,9 @@ use raspberry_core::{
     home_dir, list_dir, list_physical_disks, list_roots, packages_install,
     packages_list_installed, packages_list_upgradable, packages_search, packages_uninstall,
     packages_upgrade, packages_upgrade_all, read_events, security_snapshot, sysinfo_card,
-    FileEntry, LanDevice, LogEvent, Monitor, NetworkInfo, Package, PackageActionResult,
-    PhysicalDisk, ProcessInfo, SecuritySnapshot, SysinfoCard, SystemSnapshot,
+    tcp_port_check, FileEntry, LanDevice, LogEvent, Monitor, NetworkInfo, Package,
+    PackageActionResult, PhysicalDisk, PortCheckResult, ProcessInfo, SecuritySnapshot,
+    SysinfoCard, SystemSnapshot,
 };
 use tauri::State;
 use terminal::Terminals;
@@ -175,6 +176,22 @@ async fn sysinfo_card_cmd() -> SysinfoCard {
         })
 }
 
+// --- Toolbox: TCP port check -----------------------------------------------
+
+#[tauri::command]
+async fn port_check(host: String, port: u16, timeout_ms: Option<u64>) -> PortCheckResult {
+    let timeout = timeout_ms.unwrap_or(1500);
+    tauri::async_runtime::spawn_blocking(move || tcp_port_check(&host, port, timeout))
+        .await
+        .unwrap_or_else(|_| PortCheckResult {
+            host: String::new(),
+            port,
+            open: false,
+            latency_ms: None,
+            error: Some("probe task panicked".into()),
+        })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -204,6 +221,7 @@ pub fn run() {
             pkg_upgrade,
             pkg_upgrade_all,
             sysinfo_card_cmd,
+            port_check,
             terminal::terminal_open,
             terminal::terminal_write,
             terminal::terminal_resize,

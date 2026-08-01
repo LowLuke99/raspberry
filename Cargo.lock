@@ -2670,7 +2670,7 @@ dependencies = [
 
 [[package]]
 name = "raspberry-agent"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "axum",
  "dirs 5.0.1",
@@ -2689,7 +2689,7 @@ dependencies = [
 
 [[package]]
 name = "raspberry-core"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "netdev",
  "serde",
@@ -2699,7 +2699,7 @@ dependencies = [
 
 [[package]]
 name = "raspberry-hub"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "portable-pty",
  "raspberry-core",
