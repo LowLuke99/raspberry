@@ -9,9 +9,11 @@ mod terminal;
 use std::sync::Mutex;
 
 use raspberry_core::{
-    home_dir, list_dir, list_physical_disks, list_roots, read_events, security_snapshot,
-    FileEntry, LanDevice, LogEvent, Monitor, NetworkInfo, PhysicalDisk, ProcessInfo,
-    SecuritySnapshot, SystemSnapshot,
+    home_dir, list_dir, list_physical_disks, list_roots, packages_install,
+    packages_list_installed, packages_list_upgradable, packages_search, packages_uninstall,
+    packages_upgrade, packages_upgrade_all, read_events, security_snapshot, sysinfo_card,
+    FileEntry, LanDevice, LogEvent, Monitor, NetworkInfo, Package, PackageActionResult,
+    PhysicalDisk, ProcessInfo, SecuritySnapshot, SysinfoCard, SystemSnapshot,
 };
 use tauri::State;
 use terminal::Terminals;
@@ -107,6 +109,72 @@ fn logs_read(log: String, max: u32) -> Vec<LogEvent> {
     read_events(&log, max)
 }
 
+// --- Packages (winget) ------------------------------------------------------
+
+#[tauri::command]
+async fn pkg_list() -> Result<Vec<Package>, String> {
+    tauri::async_runtime::spawn_blocking(packages_list_installed)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn pkg_upgradable() -> Result<Vec<Package>, String> {
+    tauri::async_runtime::spawn_blocking(packages_list_upgradable)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn pkg_search(query: String) -> Result<Vec<Package>, String> {
+    tauri::async_runtime::spawn_blocking(move || packages_search(&query))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn pkg_install(id: String) -> Result<PackageActionResult, String> {
+    tauri::async_runtime::spawn_blocking(move || packages_install(&id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn pkg_uninstall(id: String) -> Result<PackageActionResult, String> {
+    tauri::async_runtime::spawn_blocking(move || packages_uninstall(&id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn pkg_upgrade(id: String) -> Result<PackageActionResult, String> {
+    tauri::async_runtime::spawn_blocking(move || packages_upgrade(&id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn pkg_upgrade_all() -> Result<PackageActionResult, String> {
+    tauri::async_runtime::spawn_blocking(packages_upgrade_all)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+// --- Sysinfo Card (fastfetch) ----------------------------------------------
+
+#[tauri::command]
+async fn sysinfo_card_cmd() -> SysinfoCard {
+    tauri::async_runtime::spawn_blocking(sysinfo_card)
+        .await
+        .unwrap_or_else(|_| SysinfoCard {
+            available: false,
+            version: None,
+            rows: Vec::new(),
+            raw_json: String::new(),
+            install_hint: Some("winget install --id Fastfetch-cli.Fastfetch -e".into()),
+        })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -128,6 +196,14 @@ pub fn run() {
             storage_disks,
             security_status,
             logs_read,
+            pkg_list,
+            pkg_upgradable,
+            pkg_search,
+            pkg_install,
+            pkg_uninstall,
+            pkg_upgrade,
+            pkg_upgrade_all,
+            sysinfo_card_cmd,
             terminal::terminal_open,
             terminal::terminal_write,
             terminal::terminal_resize,

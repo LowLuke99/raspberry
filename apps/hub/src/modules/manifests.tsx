@@ -18,6 +18,8 @@ import {
   Send,
   Cpu,
   Fingerprint,
+  Package as PackageIcon,
+  IdCard,
   type LucideIcon,
 } from "lucide-react";
 import type { ModuleManifest } from "./types";
@@ -39,6 +41,8 @@ import { TweaksPanel } from "./tweaks/TweaksPanel";
 import { IdentityPanel } from "./identity/IdentityPanel";
 import { KernelInspectorPanel } from "./kernel-inspector/KernelInspectorPanel";
 import { LocalSendPanel } from "./localsend/LocalSendPanel";
+import { PackagesPanel } from "./packages/PackagesPanel";
+import { SysinfoCardPanel } from "./sysinfo-card/SysinfoCardPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -105,6 +109,41 @@ export const moduleManifests: ModuleManifest[] = [
       "windows",
     ],
     Component: CommandsPanel,
+  }),
+  defineModule({
+    id: "packages",
+    label: "Packages",
+    icon: PackageIcon,
+    description: "winget frontend — search, install, upgrade, uninstall.",
+    keywords: [
+      "packages",
+      "winget",
+      "install",
+      "upgrade",
+      "uninstall",
+      "apps",
+      "software",
+      "scoop",
+    ],
+    Component: PackagesPanel,
+  }),
+  defineModule({
+    id: "sysinfo-card",
+    label: "Sysinfo Card",
+    icon: IdCard,
+    description: "System identity via fastfetch — OS, CPU, GPU, memory at a glance.",
+    keywords: [
+      "sysinfo",
+      "fastfetch",
+      "neofetch",
+      "identity",
+      "os",
+      "cpu",
+      "gpu",
+      "specs",
+      "about",
+    ],
+    Component: SysinfoCardPanel,
   }),
   defineModule({
     id: "tweaks",

@@ -3,9 +3,11 @@ import type {
   LanDevice,
   LogEvent,
   NetworkInfo,
+  Package,
   PhysicalDisk,
   ProcessInfo,
   SecuritySnapshot,
+  SysinfoCard,
   SystemSnapshot,
   Target,
 } from "./types";
@@ -60,6 +62,15 @@ export function createRemoteTarget({ baseUrl, token }: RemoteAgentConn): Target 
     securityStatus: () => get<SecuritySnapshot>("/security_status"),
     logsRead: (log, max) =>
       get<LogEvent[]>(`/logs/${encodeURIComponent(log)}/${max}`),
+    packagesList: () => get<Package[]>("/packages/list"),
+    packagesUpgradable: () => get<Package[]>("/packages/upgradable"),
+    packagesSearch: (q) =>
+      get<Package[]>(`/packages/search?q=${encodeURIComponent(q)}`),
+    packageInstall: () => Promise.reject(notSupported("packageInstall")),
+    packageUninstall: () => Promise.reject(notSupported("packageUninstall")),
+    packageUpgrade: () => Promise.reject(notSupported("packageUpgrade")),
+    packagesUpgradeAll: () => Promise.reject(notSupported("packagesUpgradeAll")),
+    sysinfoCard: () => get<SysinfoCard>("/sysinfo_card"),
   };
 }
 

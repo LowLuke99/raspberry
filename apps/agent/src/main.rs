@@ -17,8 +17,9 @@ use axum::{
     Json, Router,
 };
 use raspberry_core::{
-    home_dir, list_dir, list_physical_disks, list_roots, network_info, read_events, scan_lan,
-    scan_lan_deep, security_snapshot, Monitor,
+    home_dir, list_dir, list_physical_disks, list_roots, network_info, packages_list_installed,
+    packages_list_upgradable, packages_search, read_events, scan_lan, scan_lan_deep,
+    security_snapshot, sysinfo_card, Monitor,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -73,6 +74,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/files_home", get(files_home))
         .route("/files_roots", get(files_roots))
         .route("/logs/:log/:max", get(logs_read))
+        .route("/packages/list", get(packages_list))
+        .route("/packages/upgradable", get(packages_upgradable))
+        .route("/packages/search", get(packages_search_handler))
+        .route("/sysinfo_card", get(sysinfo_card_handler))
         .with_state(state)
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive());
@@ -266,4 +271,59 @@ async fn logs_read(
         .await
         .unwrap_or_default();
     Ok(Json(events))
+}
+
+// --- Read-only Packages + Sysinfo ------------------------------------------
+
+async fn packages_list(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, StatusCode> {
+    require_auth(&state, &headers)?;
+    let list = tokio::task::spawn_blocking(packages_list_installed)
+        .await
+        .unwrap_or_else(|_| Ok(Vec::new()))
+        .unwrap_or_default();
+    Ok(Json(list))
+}
+
+async fn packages_upgradable(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, StatusCode> {
+    require_auth(&state, &headers)?;
+    let list = tokio::task::spawn_blocking(packages_list_upgradable)
+        .await
+        .unwrap_or_else(|_| Ok(Vec::new()))
+        .unwrap_or_default();
+    Ok(Json(list))
+}
+
+#[derive(Deserialize)]
+struct SearchQuery {
+    q: String,
+}
+
+async fn packages_search_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<SearchQuery>,
+) -> Result<impl IntoResponse, StatusCode> {
+    require_auth(&state, &headers)?;
+    let list = tokio::task::spawn_blocking(move || packages_search(&q.q))
+        .await
+        .unwrap_or_else(|_| Ok(Vec::new()))
+        .unwrap_or_default();
+    Ok(Json(list))
+}
+
+async fn sysinfo_card_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, StatusCode> {
+    require_auth(&state, &headers)?;
+    let card = tokio::task::spawn_blocking(sysinfo_card)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(card))
 }

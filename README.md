@@ -6,6 +6,7 @@
   <a href="docs/SETUP.md"><b>🚀 Setup</b></a> ·
   <a href="docs/UPDATING.md"><b>🔄 Updating</b></a> ·
   <a href="docs/MODULES.md"><b>🧩 Modules</b></a> ·
+  <a href="docs/PHASE-7.md"><b>🆕 Phase 7</b></a> ·
   <a href="docs/TROUBLESHOOTING.md"><b>🩹 Troubleshooting</b></a>
 </p>
 
@@ -32,11 +33,11 @@ That's the whole daily workflow. No terminal needed.
 
 ## What's inside
 
-15 modules across four sections. Full list in
+17 modules across four sections. Full list in
 [docs/MODULES.md](docs/MODULES.md).
 
-**Shell** — [Terminal](docs/MODULES.md#shell) · Commands · Tweaks · Identity
-(OSINT) · LocalSend · Kernel Inspector
+**Shell** — [Terminal](docs/MODULES.md#shell) · Commands · Packages · Sysinfo
+Card · Tweaks · Identity (OSINT) · LocalSend · Kernel Inspector
 
 **System** — System Monitor · Process Explorer · Network · LAN Manager ·
 Files · Storage · Security · Graphs · Logs · Dev Toolbox
@@ -96,8 +97,28 @@ persistent agent list, pairing flow with a live `/health` probe. Read-only
 in v0.1; process-kill / WoL / terminal stay Hub-local until mTLS lands. See
 [`docs/AGENT.md`](docs/AGENT.md).
 
-**Next: Phase 6.1** — mTLS transport, per-command allow-listing on the
-agent, and one-click Windows-service install for the agent so it survives a
+**Phase 7 — Packages + Sysinfo Card + live agent health** ✅ — two new
+modules and a UX upgrade for the machine picker.
+- **Packages** — a full [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/)
+  frontend. Search the catalog, list installed apps, list upgradable, upgrade
+  all in one click, or uninstall individual packages. Read-only on remote
+  agents (mutations stay Hub-local until the mTLS/allowlist gate lands).
+- **Sysinfo Card** — pulls [fastfetch](https://github.com/fastfetch-cli/fastfetch),
+  a modern neofetch replacement, and renders its JSON as a big identity card
+  (OS, host, kernel, uptime, CPU/GPU, memory, disks). Missing binary? The
+  panel shows a one-click `winget install --id Fastfetch-cli.Fastfetch -e`
+  and drops it straight into the built-in Terminal.
+- **Live agent health** — the machine chip in the top bar now runs a 5s
+  `/health` probe against every registered agent. The dot glows green
+  (up · ≤1.2s RTT), amber (slow), red (offline), and every row in the
+  machine popover shows its own live RTT tag.
+
+**Next: Phase 7.1** — Command Deck sparklines (per-agent CPU/RAM history),
+per-agent Sysinfo Card diff view, and Ctrl+K palette entries to switch
+machines.
+
+**Then: Phase 8 — hardening** — mTLS transport, per-command allow-listing on
+the agent, and one-click Windows-service install so the agent survives a
 reboot without a login session.
 
 ---

@@ -15,6 +15,8 @@ explicit click.
 |---|---|
 | **Terminal** | Real tabbed PowerShell / CMD / WSL. Native app only. |
 | **Commands** | Searchable Windows command library. Copy to clipboard or send to Terminal. |
+| **Packages** | [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/) frontend — Installed / Upgradable / Search tabs. Install, upgrade, upgrade-all, or uninstall from the UI. Read-only on remote agents. |
+| **Sysinfo Card** | System identity via [fastfetch](https://github.com/fastfetch-cli/fastfetch) — OS, host, kernel, uptime, CPU/GPU, memory, disks. Card + raw JSON views. |
 | **Tweaks** | Curated ChrisTitusTech/winutil-style tweaks (install kits, debloat, privacy, perf, fixes, UI). Same copy / run pattern as Commands. |
 | **Identity** | OSINT — Sherlock (username) + Holehe (email). Needs `pipx install holehe sherlock-project`. |
 | **LocalSend** | Send files to any [LocalSend](https://github.com/localsend/localsend) peer on your LAN. Drag-drop + peer by IP. |
@@ -52,6 +54,8 @@ Some modules shell out to a tool that isn't shipped with Raspberry:
 | LocalSend | LocalSend desktop app (as a peer) | `winget install --id LocalSend.LocalSend -e` |
 | Kernel Inspector | System Informer | `winget install --id WinsiderSS.SystemInformer -e` |
 | Kernel Inspector (advanced) | Sysinternals PsSuspend / ProcDump / Handle | `winget install --id Microsoft.Sysinternals.Suite -e` |
+| Sysinfo Card | Fastfetch | `winget install --id Fastfetch-cli.Fastfetch -e` |
+| Packages | winget (built-in on Windows 11) | preinstalled — nothing to do |
 
 Every module has a copy-to-clipboard button for its install command, so you
 don't need to memorize any of the above.
@@ -81,3 +85,16 @@ A separate binary — [`raspberry-agent`](AGENT.md) — lets a Hub on one PC
 observe another PC over the LAN. Add machines via the top-left chip; the
 whole app retargets on click. Read-only in v0.1. Full details in
 [AGENT.md](AGENT.md).
+
+**Live health polling (Phase 7):** the chip now probes every registered
+agent's `/health` endpoint every 5 seconds. Each row in the popover shows
+a colored status dot and the last measured RTT:
+
+- **green** — up and responsive (≤ 1.2s round-trip)
+- **amber** — reachable but slow (agent under load)
+- **red** — probe failed or timed out
+- **grey** — never probed yet (fresh add, first tick pending)
+
+The active-machine chip itself takes the color of the selected agent, so
+you can see at a glance whether the machine you're driving is actually
+healthy — no need to open the popover.

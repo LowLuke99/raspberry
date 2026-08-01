@@ -139,6 +139,36 @@ export interface LogEvent {
   message: string;
 }
 
+export interface Package {
+  id: string;
+  name: string;
+  version: string;
+  /** Only set on upgradable list — the version winget would install. */
+  available: string | null;
+  source: string;
+}
+
+export interface PackageActionResult {
+  ok: boolean;
+  exit_code: number;
+  /** Combined stdout+stderr, trimmed. */
+  log: string;
+}
+
+export interface SysinfoRow {
+  key: string;
+  value: string;
+}
+
+export interface SysinfoCard {
+  available: boolean;
+  version: string | null;
+  rows: SysinfoRow[];
+  raw_json: string;
+  /** Set when fastfetch is missing — the winget install one-liner. */
+  install_hint: string | null;
+}
+
 export interface Target {
   /** True for a real machine (Tauri), false for the mock browser preview. */
   readonly isLive: boolean;
@@ -155,4 +185,13 @@ export interface Target {
   storageDisks(): Promise<PhysicalDisk[]>;
   securityStatus(): Promise<SecuritySnapshot>;
   logsRead(log: string, max: number): Promise<LogEvent[]>;
+  // --- Phase 7 ---
+  packagesList(): Promise<Package[]>;
+  packagesUpgradable(): Promise<Package[]>;
+  packagesSearch(query: string): Promise<Package[]>;
+  packageInstall(id: string): Promise<PackageActionResult>;
+  packageUninstall(id: string): Promise<PackageActionResult>;
+  packageUpgrade(id: string): Promise<PackageActionResult>;
+  packagesUpgradeAll(): Promise<PackageActionResult>;
+  sysinfoCard(): Promise<SysinfoCard>;
 }

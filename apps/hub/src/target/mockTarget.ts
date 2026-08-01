@@ -3,9 +3,12 @@ import type {
   LanDevice,
   LogEvent,
   NetworkInfo,
+  Package,
+  PackageActionResult,
   PhysicalDisk,
   ProcessInfo,
   SecuritySnapshot,
+  SysinfoCard,
   SystemSnapshot,
   Target,
 } from "./types";
@@ -41,6 +44,31 @@ let mockProcesses: ProcessInfo[] = [
   mem_bytes: (memMb as number) * 1024 * 1024,
   status: "Run",
 }));
+
+const MOCK_PACKAGES: Package[] = [
+  { id: "Microsoft.VisualStudioCode", name: "Visual Studio Code", version: "1.94.2", available: null, source: "winget" },
+  { id: "Git.Git", name: "Git", version: "2.46.0", available: null, source: "winget" },
+  { id: "Mozilla.Firefox", name: "Mozilla Firefox", version: "131.0", available: null, source: "winget" },
+  { id: "Discord.Discord", name: "Discord", version: "1.0.9166", available: null, source: "winget" },
+  { id: "Valve.Steam", name: "Steam", version: "2.10.91.91", available: null, source: "winget" },
+  { id: "OpenJS.NodeJS.LTS", name: "Node.js LTS", version: "20.17.0", available: null, source: "winget" },
+  { id: "7zip.7zip", name: "7-Zip", version: "24.07", available: null, source: "winget" },
+  { id: "VideoLAN.VLC", name: "VLC media player", version: "3.0.21", available: null, source: "winget" },
+];
+
+const MOCK_UPGRADABLE: Package[] = [
+  { id: "Microsoft.VisualStudioCode", name: "Visual Studio Code", version: "1.94.2", available: "1.94.3", source: "winget" },
+  { id: "Mozilla.Firefox", name: "Mozilla Firefox", version: "131.0", available: "131.0.2", source: "winget" },
+  { id: "Discord.Discord", name: "Discord", version: "1.0.9166", available: "1.0.9170", source: "winget" },
+];
+
+const MOCK_SEARCH: Package[] = [
+  { id: "Fastfetch-cli.Fastfetch", name: "Fastfetch", version: "2.14.0", available: null, source: "winget" },
+  { id: "Neovim.Neovim", name: "Neovim", version: "0.10.2", available: null, source: "winget" },
+  { id: "sharkdp.bat", name: "bat", version: "0.24.0", available: null, source: "winget" },
+  { id: "junegunn.fzf", name: "fzf", version: "0.55.0", available: null, source: "winget" },
+  { id: "BurntSushi.ripgrep.MSVC", name: "ripgrep", version: "14.1.1", available: null, source: "winget" },
+];
 
 export const mockTarget: Target = {
   isLive: false,
@@ -225,6 +253,67 @@ export const mockTarget: Target = {
       ],
       uac_level: 5,
       warnings: [],
+    };
+  },
+
+  async packagesList(): Promise<Package[]> {
+    return MOCK_PACKAGES.map((p) => ({ ...p, available: null }));
+  },
+
+  async packagesUpgradable(): Promise<Package[]> {
+    return MOCK_UPGRADABLE;
+  },
+
+  async packagesSearch(query: string): Promise<Package[]> {
+    const q = query.toLowerCase();
+    if (!q) return [];
+    return MOCK_SEARCH.filter(
+      (p) =>
+        p.id.toLowerCase().includes(q) ||
+        p.name.toLowerCase().includes(q),
+    );
+  },
+
+  async packageInstall(id: string): Promise<PackageActionResult> {
+    await new Promise((r) => setTimeout(r, 500));
+    return { ok: true, exit_code: 0, log: `[mock] installed ${id}` };
+  },
+
+  async packageUninstall(id: string): Promise<PackageActionResult> {
+    await new Promise((r) => setTimeout(r, 500));
+    return { ok: true, exit_code: 0, log: `[mock] uninstalled ${id}` };
+  },
+
+  async packageUpgrade(id: string): Promise<PackageActionResult> {
+    await new Promise((r) => setTimeout(r, 500));
+    return { ok: true, exit_code: 0, log: `[mock] upgraded ${id}` };
+  },
+
+  async packagesUpgradeAll(): Promise<PackageActionResult> {
+    await new Promise((r) => setTimeout(r, 800));
+    return { ok: true, exit_code: 0, log: "[mock] all upgrades complete" };
+  },
+
+  async sysinfoCard(): Promise<SysinfoCard> {
+    return {
+      available: true,
+      version: "2.14.0 (mock)",
+      rows: [
+        { key: "OS", value: "Windows 11 Home 24H2 (mock)" },
+        { key: "Host", value: "OMEN 25L GT12-1075t" },
+        { key: "Kernel", value: "10.0.26200.1234" },
+        { key: "Uptime", value: "1d 3h 17m" },
+        { key: "Packages", value: "148 (winget), 12 (scoop)" },
+        { key: "Shell", value: "pwsh 7.4.5" },
+        { key: "Terminal", value: "Windows Terminal 1.20" },
+        { key: "WM", value: "DWM" },
+        { key: "CPU", value: "AMD Ryzen 7 5700G @ 8C/16T, 3.80 GHz" },
+        { key: "GPU", value: "NVIDIA GeForce RTX 4060" },
+        { key: "Memory", value: "12.3 GiB / 32 GiB (38%)" },
+        { key: "Disk C:", value: "412 GiB / 476 GiB (86%)" },
+      ],
+      raw_json: "[/* mock fastfetch payload */]",
+      install_hint: null,
     };
   },
 

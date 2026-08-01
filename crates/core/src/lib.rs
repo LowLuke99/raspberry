@@ -5,10 +5,12 @@
 mod files;
 mod logs;
 mod net;
+mod packages;
 mod process;
 mod security;
 mod stats;
 mod storage;
+mod sysinfo_card;
 mod winshell;
 
 pub use files::{list_dir, list_roots, home_dir, FileEntry};
@@ -16,12 +18,19 @@ pub use logs::{read_events, LogEvent};
 pub use net::{
     network_info, scan_lan, scan_lan_deep, wake_on_lan, LanDevice, NetInterface, NetworkInfo,
 };
+pub use packages::{
+    install as packages_install, list_installed as packages_list_installed,
+    list_upgradable as packages_list_upgradable, search as packages_search,
+    uninstall as packages_uninstall, upgrade as packages_upgrade,
+    upgrade_all as packages_upgrade_all, Package, PackageActionResult,
+};
 pub use process::{kill_process, list_processes, ProcessInfo};
 pub use security::{
     security_snapshot, BitlockerVolume, DefenderStatus, FirewallProfile, HotFix, SecuritySnapshot,
 };
 pub use stats::{CpuCore, DiskInfo, SystemSnapshot};
 pub use storage::{list_physical_disks, PhysicalDisk};
+pub use sysinfo_card::{card as sysinfo_card, SysinfoCard, SysinfoRow};
 
 use std::time::Instant;
 use sysinfo::{Disks, Networks, ProcessesToUpdate, System};
