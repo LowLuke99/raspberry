@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { registry } from "@/modules/registry";
 import { useAppStore } from "@/state/useAppStore";
+import { useAgents } from "@/state/useAgents";
 
 /**
  * Main workspace (spec §6). Looks up the active route in the registry and
@@ -10,6 +11,9 @@ import { useAppStore } from "@/state/useAppStore";
  */
 export function Workspace() {
   const activeRoute = useAppStore((s) => s.activeRoute);
+  // Include the active machine id in the key so switching machines remounts
+  // the current panel — every panel then refetches against the new target.
+  const activeAgent = useAgents((s) => s.activeId);
   const manifest = registry.byRoute(activeRoute) ?? registry.all()[0];
 
   if (!manifest) {
@@ -31,7 +35,7 @@ export function Workspace() {
         StrictMode can drop in dev, stranding a ghost panel in the DOM).
       */}
       <motion.div
-        key={manifest.id}
+        key={`${manifest.id}::${activeAgent}`}
         className="h-full w-full"
         initial={{ opacity: 0, y: 10, scale: 0.99 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}

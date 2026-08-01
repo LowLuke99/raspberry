@@ -84,9 +84,21 @@ tooling:
 ([`scripts/Update-Raspberry.ps1`](scripts/Update-Raspberry.ps1)) + desktop
 shortcuts + docs so daily use never touches a terminal.
 
-**Next: Phase 6** — Agent binary + mTLS transport (drive a second machine
-remotely), plus a Rust-backed LocalSend server + Identity streamer that runs
-Holehe/Sherlock in-process instead of shelling out.
+**Phase 5.8 — LAN deep scan** ✅ — LAN Manager grew a `/24` ping-sweep that
+resolves hostname + RTT for every responsive host; the tiny built-in OUI
+table expanded to Amazon, Sonos, Roku, Nintendo, Ubiquiti, ASUS, D-Link and
+friends. See [`docs/MODULES.md`](docs/MODULES.md#lan-manager-deep-scan).
+
+**Phase 6 — Remote agent (v0.1)** ✅ — new `apps/agent` Rust binary
+(`raspberry-agent`) exposes the shared `core` over HTTP + bearer token so
+the Hub on one PC can monitor another. Machine picker in the top bar,
+persistent agent list, pairing flow with a live `/health` probe. Read-only
+in v0.1; process-kill / WoL / terminal stay Hub-local until mTLS lands. See
+[`docs/AGENT.md`](docs/AGENT.md).
+
+**Next: Phase 6.1** — mTLS transport, per-command allow-listing on the
+agent, and one-click Windows-service install for the agent so it survives a
+reboot without a login session.
 
 ---
 
@@ -129,6 +141,7 @@ raspberry/
 │  ├─ MODULES.md
 │  └─ TROUBLESHOOTING.md
 ├─ crates/core/            # Shared Rust: sysinfo, network, storage, security, logs
+├─ apps/agent/             # Rust HTTP server exposing core to a Hub over the LAN
 └─ apps/hub/               # Tauri app (React + Rust)
 ```
 
