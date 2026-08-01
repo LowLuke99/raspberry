@@ -37,3 +37,4 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+apps/hub/src-tauri/icons/backup-pre-*/

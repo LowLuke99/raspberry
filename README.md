@@ -1,13 +1,20 @@
-# Raspberry 🍇
+<p align="center">
+  <img src=".github/assets/hero-demo.webp" alt="Raspberry — one glass panel, every machine on your LAN" width="100%">
+</p>
 
-> One glass panel, every machine on your LAN. Minimal surface, deep power.
+<h1 align="center">Raspberry</h1>
 
-<p>
-  <a href="docs/SETUP.md"><b>🚀 Setup</b></a> ·
-  <a href="docs/UPDATING.md"><b>🔄 Updating</b></a> ·
-  <a href="docs/MODULES.md"><b>🧩 Modules</b></a> ·
-  <a href="docs/PHASE-7.md"><b>🆕 Phase 7</b></a> ·
-  <a href="docs/TROUBLESHOOTING.md"><b>🩹 Troubleshooting</b></a>
+<p align="center">
+  <b>One glass panel. Every machine on your LAN.</b><br>
+  <sub>Minimal surface. Deep power. Read-only by default. No cloud.</sub>
+</p>
+
+<p align="center">
+  <a href="docs/SETUP.md"><b>Setup</b></a> ·
+  <a href="docs/UPDATING.md"><b>Updating</b></a> ·
+  <a href="docs/MODULES.md"><b>Modules</b></a> ·
+  <a href="docs/PHASE-7.md"><b>Phase 7</b></a> ·
+  <a href="docs/TROUBLESHOOTING.md"><b>Troubleshooting</b></a>
 </p>
 
 Raspberry is a native Windows control panel for your PC and everything on
