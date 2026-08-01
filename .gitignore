@@ -28,6 +28,7 @@ apps/hub/src-tauri/gen/
 
 # logs
 npm-debug.log*
+update.log
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
