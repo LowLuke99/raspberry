@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::Mutex;
 
-use portable_pty::{native_pty_system, CommandBuilder, Child, MasterPty, PtySize};
+use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use tauri::{AppHandle, Emitter, State};
 
 struct Session {
@@ -100,7 +100,9 @@ pub fn terminal_open(
 pub fn terminal_write(state: State<'_, Terminals>, id: String, data: String) -> Result<(), String> {
     let mut map = state.inner.lock().unwrap();
     if let Some(s) = map.get_mut(&id) {
-        s.writer.write_all(data.as_bytes()).map_err(|e| e.to_string())?;
+        s.writer
+            .write_all(data.as_bytes())
+            .map_err(|e| e.to_string())?;
         s.writer.flush().map_err(|e| e.to_string())?;
     }
     Ok(())

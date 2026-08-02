@@ -21,7 +21,10 @@ pub struct LogEvent {
 pub fn read_events(log: &str, max: u32) -> Vec<LogEvent> {
     // Guard input: only allow simple log names to avoid injection into the PS
     // script we build below.
-    if !log.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '/') {
+    if !log
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '/')
+    {
         return Vec::new();
     }
     let max = max.clamp(1, 500);

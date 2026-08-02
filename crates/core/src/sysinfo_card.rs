@@ -65,9 +65,13 @@ fn run_json() -> Option<String> {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn version() -> Option<String> { None }
+fn version() -> Option<String> {
+    None
+}
 #[cfg(not(target_os = "windows"))]
-fn run_json() -> Option<String> { None }
+fn run_json() -> Option<String> {
+    None
+}
 
 fn install_hint() -> String {
     "winget install --id Fastfetch-cli.Fastfetch -e".to_string()
@@ -90,10 +94,7 @@ fn rows_from_json(json_text: &str) -> Vec<SysinfoRow> {
 
     let mut rows: Vec<SysinfoRow> = Vec::new();
     for entry in arr {
-        let module = entry
-            .get("type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
+        let module = entry.get("type").and_then(|v| v.as_str()).unwrap_or("");
         let result = match entry.get("result") {
             Some(r) => r,
             None => continue,
@@ -125,7 +126,10 @@ fn push_string(rows: &mut Vec<SysinfoRow>, key: &str, v: &serde_json::Value, fie
     for f in fields {
         if let Some(s) = v.get(*f).and_then(|x| x.as_str()) {
             if !s.is_empty() {
-                rows.push(SysinfoRow { key: key.to_string(), value: s.to_string() });
+                rows.push(SysinfoRow {
+                    key: key.to_string(),
+                    value: s.to_string(),
+                });
                 return;
             }
         }
@@ -134,7 +138,10 @@ fn push_string(rows: &mut Vec<SysinfoRow>, key: &str, v: &serde_json::Value, fie
 
 fn push_uptime(rows: &mut Vec<SysinfoRow>, v: &serde_json::Value) {
     if let Some(secs) = v.get("uptime").and_then(|x| x.as_u64()) {
-        rows.push(SysinfoRow { key: "Uptime".into(), value: fmt_uptime(secs) });
+        rows.push(SysinfoRow {
+            key: "Uptime".into(),
+            value: fmt_uptime(secs),
+        });
     }
 }
 
@@ -142,9 +149,13 @@ fn fmt_uptime(secs: u64) -> String {
     let d = secs / 86_400;
     let h = (secs % 86_400) / 3600;
     let m = (secs % 3600) / 60;
-    if d > 0 { format!("{d}d {h}h {m}m") }
-    else if h > 0 { format!("{h}h {m}m") }
-    else { format!("{m}m") }
+    if d > 0 {
+        format!("{d}d {h}h {m}m")
+    } else if h > 0 {
+        format!("{h}h {m}m")
+    } else {
+        format!("{m}m")
+    }
 }
 
 fn push_packages(rows: &mut Vec<SysinfoRow>, v: &serde_json::Value) {
@@ -158,16 +169,26 @@ fn push_packages(rows: &mut Vec<SysinfoRow>, v: &serde_json::Value) {
             }
         }
         if !parts.is_empty() {
-            rows.push(SysinfoRow { key: "Packages".into(), value: parts.join(", ") });
+            rows.push(SysinfoRow {
+                key: "Packages".into(),
+                value: parts.join(", "),
+            });
         }
     }
 }
 
 fn push_cpu(rows: &mut Vec<SysinfoRow>, v: &serde_json::Value) {
     let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("");
-    let cores = v.get("cores").and_then(|c| c.get("physical")).and_then(|x| x.as_u64());
-    let threads = v.get("cores").and_then(|c| c.get("logical")).and_then(|x| x.as_u64());
-    let base_ghz = v.get("frequency")
+    let cores = v
+        .get("cores")
+        .and_then(|c| c.get("physical"))
+        .and_then(|x| x.as_u64());
+    let threads = v
+        .get("cores")
+        .and_then(|c| c.get("logical"))
+        .and_then(|x| x.as_u64());
+    let base_ghz = v
+        .get("frequency")
         .and_then(|f| f.get("base"))
         .and_then(|x| x.as_f64())
         .map(|mhz| mhz / 1000.0);
@@ -184,7 +205,10 @@ fn push_cpu(rows: &mut Vec<SysinfoRow>, v: &serde_json::Value) {
         format!("{name} @ {}", extras.join(", "))
     };
     if !value.trim().is_empty() {
-        rows.push(SysinfoRow { key: "CPU".into(), value });
+        rows.push(SysinfoRow {
+            key: "CPU".into(),
+            value,
+        });
     }
 }
 
@@ -200,7 +224,10 @@ fn push_gpu(rows: &mut Vec<SysinfoRow>, v: &serde_json::Value) {
                 } else {
                     format!("{vendor} {name}")
                 };
-                rows.push(SysinfoRow { key: "GPU".into(), value });
+                rows.push(SysinfoRow {
+                    key: "GPU".into(),
+                    value,
+                });
             }
         }
     }
@@ -212,7 +239,9 @@ fn push_memory(rows: &mut Vec<SysinfoRow>, v: &serde_json::Value) {
 fn push_memory_labeled(rows: &mut Vec<SysinfoRow>, label: &str, v: &serde_json::Value) {
     let used = v.get("used").and_then(|x| x.as_u64()).unwrap_or(0);
     let total = v.get("total").and_then(|x| x.as_u64()).unwrap_or(0);
-    if total == 0 { return; }
+    if total == 0 {
+        return;
+    }
     let pct = (used as f64 / total as f64 * 100.0) as u64;
     rows.push(SysinfoRow {
         key: label.to_string(),
@@ -226,7 +255,9 @@ fn push_disks(rows: &mut Vec<SysinfoRow>, v: &serde_json::Value) {
             let mount = d.get("mountpoint").and_then(|x| x.as_str()).unwrap_or("");
             let used = d.get("bytesUsed").and_then(|x| x.as_u64()).unwrap_or(0);
             let total = d.get("bytesTotal").and_then(|x| x.as_u64()).unwrap_or(0);
-            if total == 0 { continue; }
+            if total == 0 {
+                continue;
+            }
             let pct = (used as f64 / total as f64 * 100.0) as u64;
             rows.push(SysinfoRow {
                 key: format!("Disk {mount}"),
@@ -239,10 +270,17 @@ fn push_disks(rows: &mut Vec<SysinfoRow>, v: &serde_json::Value) {
 fn push_battery(rows: &mut Vec<SysinfoRow>, v: &serde_json::Value) {
     let capacity = v.get("capacity").and_then(|x| x.as_f64()).unwrap_or(-1.0);
     let status = v.get("status").and_then(|x| x.as_str()).unwrap_or("");
-    if capacity < 0.0 { return; }
+    if capacity < 0.0 {
+        return;
+    }
     let mut val = format!("{capacity:.0}%");
-    if !status.is_empty() { val.push_str(&format!(" · {status}")); }
-    rows.push(SysinfoRow { key: "Battery".into(), value: val });
+    if !status.is_empty() {
+        val.push_str(&format!(" · {status}"));
+    }
+    rows.push(SysinfoRow {
+        key: "Battery".into(),
+        value: val,
+    });
 }
 
 fn human_bytes(n: u64) -> String {
@@ -251,11 +289,17 @@ fn human_bytes(n: u64) -> String {
     const MB: f64 = KB * 1024.0;
     const GB: f64 = MB * 1024.0;
     const TB: f64 = GB * 1024.0;
-    if x >= TB { format!("{:.2} TiB", x / TB) }
-    else if x >= GB { format!("{:.2} GiB", x / GB) }
-    else if x >= MB { format!("{:.0} MiB", x / MB) }
-    else if x >= KB { format!("{:.0} KiB", x / KB) }
-    else { format!("{n} B") }
+    if x >= TB {
+        format!("{:.2} TiB", x / TB)
+    } else if x >= GB {
+        format!("{:.2} GiB", x / GB)
+    } else if x >= MB {
+        format!("{:.0} MiB", x / MB)
+    } else if x >= KB {
+        format!("{:.0} KiB", x / KB)
+    } else {
+        format!("{n} B")
+    }
 }
 
 /// Public entry: returns the flat rows + raw JSON. Never errors — an install
@@ -270,6 +314,10 @@ pub fn card() -> SysinfoCard {
         version: ver,
         rows,
         raw_json: json_text,
-        install_hint: if available { None } else { Some(install_hint()) },
+        install_hint: if available {
+            None
+        } else {
+            Some(install_hint())
+        },
     }
 }

@@ -179,7 +179,11 @@ if ($null -eq $rows) { '[]' } else { $rows | ConvertTo-Json -Depth 3 -Compress }
     connections.sort_by(|a, b| {
         state_rank(&a.state)
             .cmp(&state_rank(&b.state))
-            .then(a.process_name.to_lowercase().cmp(&b.process_name.to_lowercase()))
+            .then(
+                a.process_name
+                    .to_lowercase()
+                    .cmp(&b.process_name.to_lowercase()),
+            )
             .then(a.local_port.cmp(&b.local_port))
     });
 

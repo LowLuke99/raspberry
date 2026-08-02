@@ -158,7 +158,7 @@ pub fn scan_lan_deep() -> Vec<LanDevice> {
             d.latency_ms = ms;
         }
     }
-    devices.sort_by(|a, b| ip_sort_key(&a.ip).cmp(&ip_sort_key(&b.ip)));
+    devices.sort_by_key(|d| ip_sort_key(&d.ip));
     devices
 }
 
@@ -306,7 +306,9 @@ fn oui_vendor(mac: &str) -> &'static str {
         | "94:eb:2c" | "54:60:09" => "Google / Nest",
 
         // Raspberry Pi Foundation
-        "b8:27:eb" | "dc:a6:32" | "e4:5f:01" | "28:cd:c1" | "2c:cf:67" | "d8:3a:dd" => "Raspberry Pi",
+        "b8:27:eb" | "dc:a6:32" | "e4:5f:01" | "28:cd:c1" | "2c:cf:67" | "d8:3a:dd" => {
+            "Raspberry Pi"
+        }
 
         // Apple
         "ac:de:48" | "f0:18:98" | "a4:83:e7" | "3c:22:fb" | "a8:5c:2c" | "88:66:5a"

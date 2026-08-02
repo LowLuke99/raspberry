@@ -20,7 +20,7 @@ pub struct DefenderStatus {
 
 #[derive(Serialize, Clone, Debug)]
 pub struct FirewallProfile {
-    pub name: String,      // Domain | Private | Public
+    pub name: String, // Domain | Private | Public
     pub enabled: bool,
     pub default_inbound: String,
     pub default_outbound: String,
@@ -71,19 +71,28 @@ pub fn security_snapshot() -> SecuritySnapshot {
     if !snap.defender.enabled {
         snap.warnings.push("Windows Defender is disabled.".into());
     } else if !snap.defender.realtime {
-        snap.warnings.push("Defender real-time protection is off.".into());
+        snap.warnings
+            .push("Defender real-time protection is off.".into());
     }
     if snap.defender.signature_age_days > 7 {
-        snap.warnings
-            .push(format!("Defender signatures are {} days old.", snap.defender.signature_age_days));
+        snap.warnings.push(format!(
+            "Defender signatures are {} days old.",
+            snap.defender.signature_age_days
+        ));
     }
-    let fw_off: Vec<_> = snap.firewall.iter().filter(|p| !p.enabled).map(|p| p.name.clone()).collect();
+    let fw_off: Vec<_> = snap
+        .firewall
+        .iter()
+        .filter(|p| !p.enabled)
+        .map(|p| p.name.clone())
+        .collect();
     if !fw_off.is_empty() {
         snap.warnings
             .push(format!("Firewall off on: {}.", fw_off.join(", ")));
     }
     if let Some(0) = snap.uac_level {
-        snap.warnings.push("UAC (User Account Control) is disabled.".into());
+        snap.warnings
+            .push("UAC (User Account Control) is disabled.".into());
     }
 
     snap

@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  rust:
+    name: Rust — fmt, clippy, test, build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      # The Tauri app crate needs the compiled frontend at ../dist before its
+      # build script runs (tauri-build reads tauri.conf.json + validates the
+      # frontendDist path). Skip cargo build of the hub in CI; fmt/clippy/test
+      # on core + agent cover the Rust surface without needing WebView2.
+      - name: cargo fmt (workspace)
+        run: cargo fmt --all --check
+
+      - name: cargo clippy (core + agent)
+        run: cargo clippy -p raspberry-core -p raspberry-agent --all-targets -- -D warnings
+
+      - name: cargo test (core + agent)
+        run: cargo test -p raspberry-core -p raspberry-agent --all-targets
+
+      - name: cargo build (agent, release)
+        run: cargo build -p raspberry-agent --release
+
+  frontend:
+    name: Frontend — tsc + vite build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: npm run build
+        run: npm run build

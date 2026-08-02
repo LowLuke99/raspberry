@@ -14,7 +14,7 @@ mod storage;
 mod sysinfo_card;
 mod winshell;
 
-pub use files::{list_dir, list_roots, home_dir, FileEntry};
+pub use files::{home_dir, list_dir, list_roots, FileEntry};
 pub use logs::{read_events, LogEvent};
 pub use net::{
     network_info, scan_lan, scan_lan_deep, tcp_port_check, wake_on_lan, LanDevice, NetInterface,
@@ -76,7 +76,7 @@ impl Monitor {
         let elapsed = self.last_net.elapsed().as_secs_f64().max(0.001);
         self.last_net = Instant::now();
         let (mut rx, mut tx) = (0u64, 0u64);
-        for (_name, data) in self.networks.iter() {
+        for data in self.networks.values() {
             rx += data.received();
             tx += data.transmitted();
         }
@@ -130,8 +130,7 @@ impl Monitor {
     /// Refresh and return the process table. Refreshing twice (here and on the
     /// previous call) is what gives sysinfo real per-process CPU numbers.
     pub fn processes(&mut self) -> Vec<ProcessInfo> {
-        self.sys
-            .refresh_processes(ProcessesToUpdate::All, true);
+        self.sys.refresh_processes(ProcessesToUpdate::All, true);
         list_processes(&self.sys)
     }
 

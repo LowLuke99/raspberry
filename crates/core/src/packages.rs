@@ -103,13 +103,23 @@ mod imp {
                     None
                 } else {
                     let v = line[a..end].trim();
-                    if v.is_empty() { None } else { Some(v.to_string()) }
+                    if v.is_empty() {
+                        None
+                    } else {
+                        Some(v.to_string())
+                    }
                 }
             });
             let source = col_source
                 .and_then(|s| line.get(s..).map(|v| v.trim().to_string()))
                 .unwrap_or_default();
-            out.push(Package { id, name, version, available, source });
+            out.push(Package {
+                id,
+                name,
+                version,
+                available,
+                source,
+            });
         }
         out
     }
@@ -130,7 +140,10 @@ mod imp {
             "--accept-source-agreements",
             "--disable-interactivity",
         ])?;
-        Ok(parse_table(&text).into_iter().filter(|p| p.available.is_some()).collect())
+        Ok(parse_table(&text)
+            .into_iter()
+            .filter(|p| p.available.is_some())
+            .collect())
     }
 
     pub fn search(query: &str) -> Result<Vec<Package>, String> {
@@ -149,7 +162,11 @@ mod imp {
     fn action(verb: &str, id: &str) -> Result<PackageActionResult, String> {
         // Guard the id so a wild string can't inject flags. winget package ids
         // only contain letters, digits, dot, dash, underscore, plus.
-        if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | '+')) {
+        if id.is_empty()
+            || !id
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | '+'))
+        {
             return Err(format!("invalid package id: {id:?}"));
         }
         let (code, log) = winget_capture(&[
@@ -167,12 +184,22 @@ mod imp {
             trimmed.truncate(super::imp::MAX_LOG);
             trimmed.push_str("\n… (truncated)");
         }
-        Ok(PackageActionResult { ok: code == 0, exit_code: code, log: trimmed })
+        Ok(PackageActionResult {
+            ok: code == 0,
+            exit_code: code,
+            log: trimmed,
+        })
     }
 
-    pub fn install(id: &str) -> Result<PackageActionResult, String> { action("install", id) }
-    pub fn uninstall(id: &str) -> Result<PackageActionResult, String> { action("uninstall", id) }
-    pub fn upgrade(id: &str) -> Result<PackageActionResult, String> { action("upgrade", id) }
+    pub fn install(id: &str) -> Result<PackageActionResult, String> {
+        action("install", id)
+    }
+    pub fn uninstall(id: &str) -> Result<PackageActionResult, String> {
+        action("uninstall", id)
+    }
+    pub fn upgrade(id: &str) -> Result<PackageActionResult, String> {
+        action("upgrade", id)
+    }
 
     pub fn upgrade_all() -> Result<PackageActionResult, String> {
         let (code, log) = winget_capture(&[
@@ -189,16 +216,102 @@ mod imp {
             trimmed.truncate(MAX_LOG);
             trimmed.push_str("\n… (truncated)");
         }
-        Ok(PackageActionResult { ok: code == 0, exit_code: code, log: trimmed })
+        Ok(PackageActionResult {
+            ok: code == 0,
+            exit_code: code,
+            log: trimmed,
+        })
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::{action, parse_table};
+
+        /// Recorded output from a real `winget list` (columns: Name Id Version Source).
+        /// Kept here — not in a fixtures file — so a Windows-schema change is
+        /// visible right next to the parser it will break.
+        const WINGET_LIST_SAMPLE: &str = "\
+Name                       Id                              Version      Source
+-------------------------------------------------------------------------------
+Windows Terminal           Microsoft.WindowsTerminal       1.19.10573.0 winget
+Visual Studio Code         Microsoft.VisualStudioCode      1.86.2       winget
+7-Zip 23.01 (x64)          7zip.7zip                       23.01        winget
+";
+
+        /// `winget upgrade` adds an Available column between Version and Source.
+        const WINGET_UPGRADE_SAMPLE: &str = "\
+Name                       Id                              Version      Available    Source
+------------------------------------------------------------------------------------------
+Visual Studio Code         Microsoft.VisualStudioCode      1.86.2       1.87.0       winget
+7-Zip 23.01 (x64)          7zip.7zip                       23.01        24.09        winget
+";
+
+        #[test]
+        fn parses_winget_list_columns() {
+            let pkgs = parse_table(WINGET_LIST_SAMPLE);
+            assert_eq!(pkgs.len(), 3, "should parse all 3 rows");
+            assert_eq!(pkgs[0].id, "Microsoft.WindowsTerminal");
+            assert_eq!(pkgs[0].version, "1.19.10573.0");
+            assert!(pkgs[0].available.is_none(), "list output has no Available");
+            assert_eq!(pkgs[2].id, "7zip.7zip");
+        }
+
+        #[test]
+        fn parses_winget_upgrade_with_available_column() {
+            let pkgs = parse_table(WINGET_UPGRADE_SAMPLE);
+            assert_eq!(pkgs.len(), 2);
+            assert_eq!(pkgs[0].available.as_deref(), Some("1.87.0"));
+            assert_eq!(pkgs[1].available.as_deref(), Some("24.09"));
+        }
+
+        #[test]
+        fn parser_skips_lines_before_header() {
+            // Any distinct pre-header line (progress messages, warnings)
+            // should be skipped — the parser advances until it finds the
+            // Name/Id header row.
+            let with_prefix = format!(
+                "Searching for installed packages...\n\
+                 Some other noise line\n\
+                 {WINGET_LIST_SAMPLE}"
+            );
+            let pkgs = parse_table(&with_prefix);
+            assert_eq!(pkgs.len(), 3);
+            assert_eq!(pkgs[0].id, "Microsoft.WindowsTerminal");
+        }
+
+        #[test]
+        fn parser_returns_empty_on_no_header() {
+            assert!(parse_table("").is_empty());
+            assert!(parse_table("Nothing here\nnothing there").is_empty());
+        }
+
+        #[test]
+        fn action_rejects_invalid_ids() {
+            // Any character outside [A-Za-z0-9.+_-] must be rejected before
+            // we hand the id to winget (defends against flag-injection like
+            // "Foo --uninstall").
+            for evil in ["", "Foo --bad", "space id", "semi;colon", "back`tick"] {
+                assert!(
+                    action("install", evil).is_err(),
+                    "should have rejected: {evil:?}"
+                );
+            }
+        }
     }
 }
 
 #[cfg(not(target_os = "windows"))]
 mod imp {
     use super::{Package, PackageActionResult};
-    pub fn list_installed() -> Result<Vec<Package>, String> { Ok(Vec::new()) }
-    pub fn list_upgradable() -> Result<Vec<Package>, String> { Ok(Vec::new()) }
-    pub fn search(_q: &str) -> Result<Vec<Package>, String> { Ok(Vec::new()) }
+    pub fn list_installed() -> Result<Vec<Package>, String> {
+        Ok(Vec::new())
+    }
+    pub fn list_upgradable() -> Result<Vec<Package>, String> {
+        Ok(Vec::new())
+    }
+    pub fn search(_q: &str) -> Result<Vec<Package>, String> {
+        Ok(Vec::new())
+    }
     pub fn install(_id: &str) -> Result<PackageActionResult, String> {
         Err("winget is Windows-only".into())
     }

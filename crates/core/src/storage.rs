@@ -13,7 +13,7 @@ pub struct PhysicalDisk {
     pub media_type: String, // "SSD" | "HDD" | "Unspecified"
     pub bus_type: String,   // "NVMe" | "SATA" | "USB" | ...
     pub size_bytes: u64,
-    pub health: String,     // "Healthy" | "Warning" | "Unhealthy"
+    pub health: String, // "Healthy" | "Warning" | "Unhealthy"
     pub operational_status: String,
     pub serial: String,
 }
@@ -97,14 +97,38 @@ fn enum_label(v: Option<serde_json::Value>, table: &[(u64, &str)]) -> String {
 // Numeric enum tables from MSFT docs (kept short; unknowns fall through as the raw int).
 const MEDIA_TYPES: &[(u64, &str)] = &[(0, "Unspecified"), (3, "HDD"), (4, "SSD"), (5, "SCM")];
 const BUS_TYPES: &[(u64, &str)] = &[
-    (0, "Unknown"), (1, "SCSI"), (3, "ATA"), (7, "USB"), (8, "SAS"), (11, "SATA"),
+    (0, "Unknown"),
+    (1, "SCSI"),
+    (3, "ATA"),
+    (7, "USB"),
+    (8, "SAS"),
+    (11, "SATA"),
     (17, "NVMe"),
 ];
-const HEALTH: &[(u64, &str)] = &[(0, "Healthy"), (1, "Warning"), (2, "Unhealthy"), (5, "Unknown")];
+const HEALTH: &[(u64, &str)] = &[
+    (0, "Healthy"),
+    (1, "Warning"),
+    (2, "Unhealthy"),
+    (5, "Unknown"),
+];
 const OP_STATUS: &[(u64, &str)] = &[
-    (0, "Unknown"), (2, "OK"), (3, "Degraded"), (4, "Stressed"), (5, "Predictive Failure"),
-    (6, "Error"), (7, "Non-Recoverable Error"), (8, "Starting"), (9, "Stopping"),
-    (10, "Stopped"), (11, "In Service"), (12, "No Contact"), (13, "Lost Communication"),
-    (14, "Aborted"), (15, "Dormant"), (16, "Supporting Entity in Error"), (17, "Completed"),
-    (18, "Power Mode"), (19, "Relocating"),
+    (0, "Unknown"),
+    (2, "OK"),
+    (3, "Degraded"),
+    (4, "Stressed"),
+    (5, "Predictive Failure"),
+    (6, "Error"),
+    (7, "Non-Recoverable Error"),
+    (8, "Starting"),
+    (9, "Stopping"),
+    (10, "Stopped"),
+    (11, "In Service"),
+    (12, "No Contact"),
+    (13, "Lost Communication"),
+    (14, "Aborted"),
+    (15, "Dormant"),
+    (16, "Supporting Entity in Error"),
+    (17, "Completed"),
+    (18, "Power Mode"),
+    (19, "Relocating"),
 ];

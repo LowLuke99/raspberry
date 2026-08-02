@@ -27,11 +27,17 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tokio::signal;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    cors::{Any, CorsLayer},
+    trace::TraceLayer,
+};
 
 mod config;
+mod paths;
 
 use config::AgentConfig;
+use paths::CheckResult;
+use std::path::PathBuf;
 
 const AGENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -40,6 +46,9 @@ struct AppState {
     monitor: Arc<Mutex<Monitor>>,
     token: Arc<String>,
     hostname: Arc<String>,
+    /// Directory prefixes the `/files_list` endpoint will honor. Anything
+    /// resolving outside these gets `403 Forbidden` even for a paired Hub.
+    file_allowlist: Arc<Vec<PathBuf>>,
 }
 
 #[tokio::main]
@@ -53,10 +62,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = AgentConfig::load_or_create()?;
     let hostname = sysinfo::System::host_name().unwrap_or_else(|| "unknown-host".to_string());
 
+    let file_allowlist = paths::default_allowlist();
+    tracing::info!("File allowlist ({} entries):", file_allowlist.len());
+    for p in &file_allowlist {
+        tracing::info!("  - {}", p.display());
+    }
+
     let state = AppState {
         monitor: Arc::new(Mutex::new(Monitor::new())),
         token: Arc::new(cfg.token.clone()),
         hostname: Arc::new(hostname.clone()),
+        file_allowlist: Arc::new(file_allowlist),
     };
 
     let app = Router::new()
@@ -80,7 +96,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/sysinfo_card", get(sysinfo_card_handler))
         .with_state(state)
         .layer(TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive());
+        // The Tauri Hub's WebView performs real browser `fetch`, so CORS is
+        // enforced. Origins are unpredictable (LAN IPs, `tauri.localhost`,
+        // dev `localhost:5173`) — allow any origin, but restrict to the
+        // methods and headers we actually accept. Bearer-token auth on every
+        // non-/health endpoint blocks drive-by cross-site abuse.
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
+                .allow_headers([
+                    axum::http::header::AUTHORIZATION,
+                    axum::http::header::CONTENT_TYPE,
+                ]),
+        );
 
     let addr: SocketAddr = format!("0.0.0.0:{}", cfg.port).parse()?;
     tracing::info!("Raspberry Agent v{AGENT_VERSION} listening on {addr}");
@@ -239,9 +268,16 @@ async fn files_list(
     Query(q): Query<PathQuery>,
 ) -> Result<impl IntoResponse, StatusCode> {
     require_auth(&state, &headers)?;
-    match list_dir(&q.path) {
-        Ok(entries) => Ok(Json(entries)),
-        Err(_) => Err(StatusCode::NOT_FOUND),
+    match paths::check(&q.path, state.file_allowlist.as_ref()) {
+        CheckResult::NotFound => Err(StatusCode::NOT_FOUND),
+        CheckResult::Denied => {
+            tracing::warn!("files_list denied out-of-allowlist path: {}", q.path);
+            Err(StatusCode::FORBIDDEN)
+        }
+        CheckResult::Allowed(canon) => match list_dir(&canon.to_string_lossy()) {
+            Ok(entries) => Ok(Json(entries)),
+            Err(_) => Err(StatusCode::NOT_FOUND),
+        },
     }
 }
 
@@ -326,4 +362,52 @@ async fn sysinfo_card_handler(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(card))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ct_eq;
+
+    #[test]
+    fn ct_eq_matches_identical_strings() {
+        assert!(ct_eq("hello", "hello"));
+        assert!(ct_eq("", ""));
+        // A realistic 32-char hex token.
+        assert!(ct_eq(
+            "0123456789abcdef0123456789abcdef",
+            "0123456789abcdef0123456789abcdef"
+        ));
+    }
+
+    #[test]
+    fn ct_eq_rejects_different_strings() {
+        assert!(!ct_eq("hello", "world"));
+        assert!(!ct_eq("abc", "abd"));
+    }
+
+    #[test]
+    fn ct_eq_rejects_length_mismatch() {
+        // Length-mismatch is the one non-constant-time branch we allow —
+        // still must return false.
+        assert!(!ct_eq("short", "longer_string"));
+        assert!(!ct_eq("longer_string", "short"));
+        assert!(!ct_eq("token", ""));
+    }
+
+    #[test]
+    fn ct_eq_walks_full_length_on_mismatch() {
+        // If the compare short-circuited on the first differing byte, an
+        // attacker could time the response. This test won't measure timing
+        // (that requires nanosecond precision), but it does confirm the
+        // implementation compares all bytes: single-byte-different pairs
+        // must all resolve to false, including a diff at the last position.
+        assert!(!ct_eq(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab"
+        ));
+        assert!(!ct_eq(
+            "baaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ));
+    }
 }

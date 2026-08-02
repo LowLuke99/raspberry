@@ -59,3 +59,29 @@ fn random_token() -> String {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::random_token;
+    use std::collections::HashSet;
+
+    #[test]
+    fn random_token_has_expected_shape() {
+        let t = random_token();
+        assert_eq!(t.len(), 32, "token must be 32 chars");
+        assert!(
+            t.chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_uppercase()),
+            "token must be lowercase hex: {t}"
+        );
+    }
+
+    #[test]
+    fn random_tokens_are_unique_across_many_calls() {
+        // 128 bits of entropy — collisions in 1_000 draws would be a bug.
+        let mut seen = HashSet::new();
+        for _ in 0..1_000 {
+            assert!(seen.insert(random_token()));
+        }
+    }
+}

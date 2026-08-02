@@ -172,6 +172,21 @@ try {
     Set-Status "Dependencies unchanged."
   }
 
+  # Back the current exe up before overwriting. If the build fails we
+  # restore it so the user always has a working copy to launch, even after
+  # a broken pull. The .bak lives next to the exe (same drive, atomic
+  # rename on same-volume Move-Item).
+  $BackupPath = "$ExePath.bak"
+  $backedUp = $false
+  if (Test-Path $ExePath) {
+    try {
+      Copy-Item -Path $ExePath -Destination $BackupPath -Force
+      $backedUp = $true
+    } catch {
+      Set-Status "Warning: could not back up existing exe: $_"
+    }
+  }
+
   Set-Step "Building Raspberry (Rust compile - first build can take several minutes)"
   $buildLog = Join-Path $env:TEMP "raspberry-update-build.log"
   if (Test-Path $buildLog) { Remove-Item $buildLog -Force }
@@ -196,10 +211,23 @@ try {
   if ($proc.ExitCode -ne 0) {
     $tailLog = ""
     if (Test-Path $buildLog) { $tailLog = (Get-Content $buildLog -Tail 10 | Out-String).Trim() }
-    Fail-With "Build failed (exit $($proc.ExitCode)).`n$tailLog"
+    if ($backedUp) {
+      try {
+        Copy-Item -Path $BackupPath -Destination $ExePath -Force
+        Fail-With "Build failed (exit $($proc.ExitCode)). Previous exe restored from .bak.`n$tailLog"
+      } catch {
+        Fail-With "Build failed (exit $($proc.ExitCode)) AND rollback failed: $_`n$tailLog"
+      }
+    } else {
+      Fail-With "Build failed (exit $($proc.ExitCode)).`n$tailLog"
+    }
   }
 
   if (-not (Test-Path $ExePath)) {
+    if ($backedUp) {
+      Copy-Item -Path $BackupPath -Destination $ExePath -Force -ErrorAction SilentlyContinue
+      Fail-With "Build finished but exe missing at:`n$ExePath`n(Previous exe restored from .bak.)"
+    }
     Fail-With "Build finished but exe missing at:`n$ExePath"
   }
 

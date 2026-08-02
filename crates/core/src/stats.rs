@@ -19,7 +19,10 @@ pub struct DiskInfo {
 
 /// A full point-in-time snapshot of the machine's resources.
 /// Byte counts are raw bytes; the frontend formats them.
-#[derive(Serialize, Clone, Debug)]
+///
+/// `Default` gives us a safe zero-value snapshot to return from a Tauri handler
+/// when a `spawn_blocking` join fails — one skipped tick beats a UI crash.
+#[derive(Serialize, Clone, Debug, Default)]
 pub struct SystemSnapshot {
     pub cpu_usage: f32,
     pub cpu_name: String,
