@@ -29,6 +29,7 @@ import { useAppStore } from "@/state/useAppStore";
 import { SectionHeroRow } from "./SectionHeroRow";
 
 const REFRESH_MS = 2000;
+const HISTORY_MAX = 60;   // ~2 min at 2s poll
 
 const QUICK_JUMPS: {
   id: string;
@@ -52,6 +53,9 @@ const QUICK_JUMPS: {
 
 export function CommandDeckPanel({ manifest }: { manifest: ModuleManifest }) {
   const [snap, setSnap] = useState<SystemSnapshot | null>(null);
+  const [cpuHist, setCpuHist] = useState<number[]>([]);
+  const [memHist, setMemHist] = useState<number[]>([]);
+  const [netHist, setNetHist] = useState<number[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -60,6 +64,11 @@ export function CommandDeckPanel({ manifest }: { manifest: ModuleManifest }) {
       target.systemSnapshot().then((s) => {
         if (!alive) return;
         setSnap(s);
+        const memPct = (s.mem_used / Math.max(s.mem_total, 1)) * 100;
+        const netTotal = s.net_rx_per_s + s.net_tx_per_s;
+        setCpuHist((h) => [...h, s.cpu_usage].slice(-HISTORY_MAX));
+        setMemHist((h) => [...h, memPct].slice(-HISTORY_MAX));
+        setNetHist((h) => [...h, netTotal].slice(-HISTORY_MAX));
         cancel = window.setTimeout(tick, REFRESH_MS);
       });
     };
@@ -87,6 +96,8 @@ export function CommandDeckPanel({ manifest }: { manifest: ModuleManifest }) {
             value={snap ? formatPercent(snap.cpu_usage, 0) : "—"}
             sub={snap?.cpu_name || ""}
             pct={snap?.cpu_usage ?? 0}
+            history={cpuHist}
+            historyMax={100}
           />
           <StatTile
             icon={<MemoryStick size={14} />}
@@ -100,6 +111,8 @@ export function CommandDeckPanel({ manifest }: { manifest: ModuleManifest }) {
               snap ? `${formatBytes(snap.mem_used)} / ${formatBytes(snap.mem_total)}` : ""
             }
             pct={snap ? (snap.mem_used / Math.max(snap.mem_total, 1)) * 100 : 0}
+            history={memHist}
+            historyMax={100}
           />
           <StatTile
             icon={<Radio size={14} />}
@@ -110,6 +123,7 @@ export function CommandDeckPanel({ manifest }: { manifest: ModuleManifest }) {
                 ? `↓${formatRate(snap.net_rx_per_s)}  ↑${formatRate(snap.net_tx_per_s)}`
                 : ""
             }
+            history={netHist}
           />
           <StatTile
             icon={<ListTree size={14} />}
@@ -194,12 +208,16 @@ function StatTile({
   value,
   sub,
   pct,
+  history,
+  historyMax,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub: string;
   pct?: number;
+  history?: number[];
+  historyMax?: number;
 }) {
   return (
     <GlassPanel interactive={false} className="p-3">
@@ -209,12 +227,54 @@ function StatTile({
       </div>
       <div className="text-[22px] font-semibold text-text">{value}</div>
       <div className="mono mt-0.5 truncate text-[10.5px] text-text-dim">{sub}</div>
+      {history && history.length > 1 && (
+        <div className="mt-2">
+          <Sparkline data={history} max={historyMax} />
+        </div>
+      )}
       {pct !== undefined && (
         <div className="mt-2">
           <BarMeter pct={pct} />
         </div>
       )}
     </GlassPanel>
+  );
+}
+
+/**
+ * Sparkline — tiny inline SVG. Renders a filled area + top line for
+ * the last N samples. Auto-scales to `max` when provided (e.g. 100
+ * for percent) or to observed max otherwise (network throughput).
+ */
+function Sparkline({ data, max }: { data: number[]; max?: number }) {
+  const w = 100;
+  const h = 22;
+  const n = data.length;
+  const peak = max ?? Math.max(1, ...data);
+  const stepX = w / Math.max(n - 1, 1);
+  const points = data.map((v, i) => {
+    const x = i * stepX;
+    const y = h - (Math.min(v, peak) / peak) * h;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  });
+  const line = `M ${points.join(" L ")}`;
+  const area = `M 0,${h} L ${points.join(" L ")} L ${w.toFixed(2)},${h} Z`;
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      className="h-6 w-full"
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id="sparkFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="rgb(225,29,72)" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="rgb(225,29,72)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#sparkFill)" />
+      <path d={line} fill="none" stroke="rgb(225,29,72)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+    </svg>
   );
 }
 

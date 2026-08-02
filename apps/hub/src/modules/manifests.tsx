@@ -21,6 +21,7 @@ import {
   Package as PackageIcon,
   IdCard,
   RadioTower,
+  Ghost,
   type LucideIcon,
 } from "lucide-react";
 import type { ModuleManifest } from "./types";
@@ -45,6 +46,7 @@ import { LocalSendPanel } from "./localsend/LocalSendPanel";
 import { PackagesPanel } from "./packages/PackagesPanel";
 import { SysinfoCardPanel } from "./sysinfo-card/SysinfoCardPanel";
 import { WatchtowerPanel } from "./watchtower/WatchtowerPanel";
+import { PersonasPanel } from "./personas/PersonasPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -181,6 +183,29 @@ export const moduleManifests: ModuleManifest[] = [
       "gmail",
     ],
     Component: IdentityPanel,
+  }),
+  defineModule({
+    id: "personas",
+    label: "Personas",
+    icon: Ghost,
+    description: "Synthetic identity generator — names, addresses, cards, UAs. Offline. All fake.",
+    keywords: [
+      "personas",
+      "fake",
+      "identity",
+      "generator",
+      "anonymous",
+      "anon",
+      "test data",
+      "mock",
+      "burner",
+      "alias",
+      "ghost",
+      "sockpuppet",
+      "user agent",
+      "credit card",
+    ],
+    Component: PersonasPanel,
   }),
   defineModule({
     id: "localsend",
