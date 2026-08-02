@@ -1,7 +1,9 @@
 import type {
+  ConnectionSnapshot,
   FileEntry,
   LanDevice,
   LogEvent,
+  NetConnection,
   NetworkInfo,
   Package,
   PackageActionResult,
@@ -314,6 +316,48 @@ export const mockTarget: Target = {
       ],
       raw_json: "[/* mock fastfetch payload */]",
       install_hint: null,
+    };
+  },
+
+  async networkConnections(): Promise<ConnectionSnapshot> {
+    // A believable connection set — a browser talking to a handful of hosts,
+    // a couple of dev tools listening, and some Windows housekeeping.
+    const fixed: Array<Omit<NetConnection, "protocol" | "listen_any" | "foreign">> = [
+      { local_addr: "0.0.0.0", local_port: 135, remote_addr: "0.0.0.0", remote_port: 0, state: "Listen", pid: 892, process_name: "svchost", process_path: "C:\\Windows\\System32\\svchost.exe" },
+      { local_addr: "0.0.0.0", local_port: 445, remote_addr: "0.0.0.0", remote_port: 0, state: "Listen", pid: 4, process_name: "System", process_path: null },
+      { local_addr: "0.0.0.0", local_port: 3000, remote_addr: "0.0.0.0", remote_port: 0, state: "Listen", pid: 21044, process_name: "node", process_path: "C:\\Program Files\\nodejs\\node.exe" },
+      { local_addr: "0.0.0.0", local_port: 9000, remote_addr: "0.0.0.0", remote_port: 0, state: "Listen", pid: 21044, process_name: "node", process_path: "C:\\Program Files\\nodejs\\node.exe" },
+      { local_addr: "192.168.1.42", local_port: 51824, remote_addr: "142.250.190.78", remote_port: 443, state: "Established", pid: 6120, process_name: "chrome", process_path: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" },
+      { local_addr: "192.168.1.42", local_port: 51825, remote_addr: "162.159.135.234", remote_port: 443, state: "Established", pid: 6120, process_name: "chrome", process_path: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" },
+      { local_addr: "192.168.1.42", local_port: 51826, remote_addr: "104.16.132.229", remote_port: 443, state: "Established", pid: 6120, process_name: "chrome", process_path: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" },
+      { local_addr: "192.168.1.42", local_port: 51830, remote_addr: "140.82.121.4", remote_port: 443, state: "Established", pid: 15080, process_name: "Code", process_path: "C:\\Users\\lukep\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe" },
+      { local_addr: "192.168.1.42", local_port: 51831, remote_addr: "20.60.31.129", remote_port: 443, state: "Established", pid: 15080, process_name: "Code", process_path: "C:\\Users\\lukep\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe" },
+      { local_addr: "192.168.1.42", local_port: 51840, remote_addr: "162.159.129.234", remote_port: 443, state: "Established", pid: 8320, process_name: "Discord", process_path: "C:\\Users\\lukep\\AppData\\Local\\Discord\\app-1.0.9166\\Discord.exe" },
+      { local_addr: "192.168.1.42", local_port: 51841, remote_addr: "35.186.224.25", remote_port: 443, state: "Established", pid: 8320, process_name: "Discord", process_path: "C:\\Users\\lukep\\AppData\\Local\\Discord\\app-1.0.9166\\Discord.exe" },
+      { local_addr: "192.168.1.42", local_port: 51850, remote_addr: "104.244.42.129", remote_port: 443, state: "Established", pid: 11492, process_name: "Spotify", process_path: null },
+      { local_addr: "127.0.0.1", local_port: 6463, remote_addr: "127.0.0.1", remote_port: 51870, state: "Established", pid: 8320, process_name: "Discord", process_path: null },
+      { local_addr: "192.168.1.42", local_port: 51900, remote_addr: "40.100.163.130", remote_port: 443, state: "TimeWait", pid: 0, process_name: "", process_path: null },
+    ];
+    const connections: NetConnection[] = fixed.map((c) => ({
+      protocol: "TCP",
+      ...c,
+      listen_any: c.local_addr === "0.0.0.0" || c.local_addr === "::",
+      foreign:
+        c.remote_addr.length > 0 &&
+        !c.remote_addr.startsWith("127.") &&
+        c.remote_addr !== "0.0.0.0" &&
+        c.remote_addr !== "::",
+    }));
+    const foreignHosts = new Set(connections.filter((c) => c.foreign).map((c) => c.remote_addr));
+    const pids = new Set(connections.filter((c) => c.pid !== 0).map((c) => c.pid));
+    return {
+      connections,
+      total: connections.length,
+      listening: connections.filter((c) => c.state === "Listen").length,
+      established: connections.filter((c) => c.state === "Established").length,
+      foreign_hosts: foreignHosts.size,
+      unique_processes: pids.size,
+      supported: true,
     };
   },
 

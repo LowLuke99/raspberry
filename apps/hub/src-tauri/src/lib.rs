@@ -11,10 +11,10 @@ use std::sync::Mutex;
 use raspberry_core::{
     home_dir, list_dir, list_physical_disks, list_roots, packages_install,
     packages_list_installed, packages_list_upgradable, packages_search, packages_uninstall,
-    packages_upgrade, packages_upgrade_all, read_events, security_snapshot, sysinfo_card,
-    tcp_port_check, FileEntry, LanDevice, LogEvent, Monitor, NetworkInfo, Package,
-    PackageActionResult, PhysicalDisk, PortCheckResult, ProcessInfo, SecuritySnapshot,
-    SysinfoCard, SystemSnapshot,
+    packages_upgrade, packages_upgrade_all, read_events, security_snapshot,
+    snapshot_connections, sysinfo_card, tcp_port_check, ConnectionSnapshot, FileEntry, LanDevice,
+    LogEvent, Monitor, NetworkInfo, Package, PackageActionResult, PhysicalDisk, PortCheckResult,
+    ProcessInfo, SecuritySnapshot, SysinfoCard, SystemSnapshot,
 };
 use tauri::State;
 use terminal::Terminals;
@@ -176,6 +176,26 @@ async fn sysinfo_card_cmd() -> SysinfoCard {
         })
 }
 
+// --- Watchtower: live TCP connection table ---------------------------------
+
+/// One shot of the outbound-connection radar (spec §10, Watchtower). Runs
+/// PowerShell (`Get-NetTCPConnection` + `Get-Process`) so the hop off the
+/// UI thread matters — always spawn-blocking.
+#[tauri::command]
+async fn network_connections() -> ConnectionSnapshot {
+    tauri::async_runtime::spawn_blocking(snapshot_connections)
+        .await
+        .unwrap_or_else(|_| ConnectionSnapshot {
+            connections: Vec::new(),
+            total: 0,
+            listening: 0,
+            established: 0,
+            foreign_hosts: 0,
+            unique_processes: 0,
+            supported: true,
+        })
+}
+
 // --- Toolbox: TCP port check -----------------------------------------------
 
 #[tauri::command]
@@ -221,6 +241,7 @@ pub fn run() {
             pkg_upgrade,
             pkg_upgrade_all,
             sysinfo_card_cmd,
+            network_connections,
             port_check,
             terminal::terminal_open,
             terminal::terminal_write,

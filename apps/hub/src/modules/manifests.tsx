@@ -20,6 +20,7 @@ import {
   Fingerprint,
   Package as PackageIcon,
   IdCard,
+  RadioTower,
   type LucideIcon,
 } from "lucide-react";
 import type { ModuleManifest } from "./types";
@@ -43,6 +44,7 @@ import { KernelInspectorPanel } from "./kernel-inspector/KernelInspectorPanel";
 import { LocalSendPanel } from "./localsend/LocalSendPanel";
 import { PackagesPanel } from "./packages/PackagesPanel";
 import { SysinfoCardPanel } from "./sysinfo-card/SysinfoCardPanel";
+import { WatchtowerPanel } from "./watchtower/WatchtowerPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -287,6 +289,28 @@ export const moduleManifests: ModuleManifest[] = [
     icon: Workflow,
     description: "Saved commands, scripts, scheduler, workflow builder.",
     keywords: ["scripts", "macros", "scheduler", "workflow", "tasks"],
+  }),
+  defineModule({
+    id: "watchtower",
+    label: "Watchtower",
+    icon: RadioTower,
+    description: "Live TCP radar — every process, every socket, foreign hosts flagged.",
+    keywords: [
+      "watchtower",
+      "connections",
+      "netstat",
+      "tcp",
+      "sockets",
+      "outbound",
+      "phone home",
+      "firewall",
+      "listen",
+      "established",
+      "monitor",
+      "radar",
+      "traffic",
+    ],
+    Component: WatchtowerPanel,
   }),
   defineModule({
     id: "security",

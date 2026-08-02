@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  ConnectionSnapshot,
   FileEntry,
   LanDevice,
   LogEvent,
@@ -43,4 +44,5 @@ export const localTarget: Target = {
   packageUpgrade: (id) => invoke<PackageActionResult>("pkg_upgrade", { id }),
   packagesUpgradeAll: () => invoke<PackageActionResult>("pkg_upgrade_all"),
   sysinfoCard: () => invoke<SysinfoCard>("sysinfo_card_cmd"),
+  networkConnections: () => invoke<ConnectionSnapshot>("network_connections"),
 };

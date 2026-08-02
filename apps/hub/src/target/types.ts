@@ -169,6 +169,35 @@ export interface SysinfoCard {
   install_hint: string | null;
 }
 
+/**
+ * One row of the Watchtower live connection radar (spec §10, Watchtower).
+ * Mirrors `raspberry_core::NetConnection`.
+ */
+export interface NetConnection {
+  protocol: string;
+  local_addr: string;
+  local_port: number;
+  remote_addr: string;
+  remote_port: number;
+  state: string;
+  listen_any: boolean;
+  foreign: boolean;
+  pid: number;
+  process_name: string;
+  process_path: string | null;
+}
+
+export interface ConnectionSnapshot {
+  connections: NetConnection[];
+  total: number;
+  listening: number;
+  established: number;
+  foreign_hosts: number;
+  unique_processes: number;
+  /** false on non-Windows targets — the panel shows a "not supported" state. */
+  supported: boolean;
+}
+
 export interface Target {
   /** True for a real machine (Tauri), false for the mock browser preview. */
   readonly isLive: boolean;
@@ -194,4 +223,5 @@ export interface Target {
   packageUpgrade(id: string): Promise<PackageActionResult>;
   packagesUpgradeAll(): Promise<PackageActionResult>;
   sysinfoCard(): Promise<SysinfoCard>;
+  networkConnections(): Promise<ConnectionSnapshot>;
 }

@@ -1,4 +1,5 @@
 import type {
+  ConnectionSnapshot,
   FileEntry,
   LanDevice,
   LogEvent,
@@ -71,6 +72,7 @@ export function createRemoteTarget({ baseUrl, token }: RemoteAgentConn): Target 
     packageUpgrade: () => Promise.reject(notSupported("packageUpgrade")),
     packagesUpgradeAll: () => Promise.reject(notSupported("packagesUpgradeAll")),
     sysinfoCard: () => get<SysinfoCard>("/sysinfo_card"),
+    networkConnections: () => get<ConnectionSnapshot>("/network_connections"),
   };
 }
 

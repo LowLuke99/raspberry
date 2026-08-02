@@ -5,6 +5,7 @@
 mod files;
 mod logs;
 mod net;
+mod net_connections;
 mod packages;
 mod process;
 mod security;
@@ -19,6 +20,7 @@ pub use net::{
     network_info, scan_lan, scan_lan_deep, tcp_port_check, wake_on_lan, LanDevice, NetInterface,
     NetworkInfo, PortCheckResult,
 };
+pub use net_connections::{snapshot_connections, ConnectionSnapshot, NetConnection};
 pub use packages::{
     install as packages_install, list_installed as packages_list_installed,
     list_upgradable as packages_list_upgradable, search as packages_search,
