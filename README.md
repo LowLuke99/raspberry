@@ -164,7 +164,7 @@ Or re-create the shortcuts:
 .\Install-Raspberry.bat
 ```
 
-Full docs: [Updating](docs/UPDATING.md) · [Troubleshooting](docs/TROUBLESHOOTING.md).
+Full docs: [Updating](docs/UPDATING.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Project Audit & Roadmap](docs/project-audit/README.md).
 
 ---
 
