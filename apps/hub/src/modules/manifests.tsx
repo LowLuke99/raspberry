@@ -47,6 +47,7 @@ import { PackagesPanel } from "./packages/PackagesPanel";
 import { SysinfoCardPanel } from "./sysinfo-card/SysinfoCardPanel";
 import { WatchtowerPanel } from "./watchtower/WatchtowerPanel";
 import { PersonasPanel } from "./personas/PersonasPanel";
+import { PresencePanel } from "./presence/PresencePanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -263,6 +264,27 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Discover devices (ARP), vendor lookup, Wake-on-LAN.",
     keywords: ["discover", "devices", "mac", "wol", "map", "oui"],
     Component: LanManagerPanel,
+  }),
+  defineModule({
+    id: "presence",
+    label: "Presence",
+    icon: RadioTower,
+    description:
+      "One terminal to rule them all — every phone, laptop, and IoT thing on your WiFi, remembered.",
+    keywords: [
+      "presence",
+      "history",
+      "who's home",
+      "phones",
+      "iot",
+      "alerts",
+      "timeline",
+      "devices",
+      "monitor",
+      "lan",
+      "wifi",
+    ],
+    Component: PresencePanel,
   }),
   defineModule({
     id: "ssh",

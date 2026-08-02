@@ -18,10 +18,10 @@ use std::sync::{Arc, Mutex};
 use raspberry_core::{
     home_dir, list_dir, list_physical_disks, list_roots, packages_install, packages_list_installed,
     packages_list_upgradable, packages_search, packages_uninstall, packages_upgrade,
-    packages_upgrade_all, read_events, security_snapshot, snapshot_connections, sysinfo_card,
-    tcp_port_check, ConnectionSnapshot, FileEntry, LanDevice, LogEvent, Monitor, NetworkInfo,
-    Package, PackageActionResult, PhysicalDisk, PortCheckResult, ProcessInfo, SecuritySnapshot,
-    SysinfoCard, SystemSnapshot,
+    packages_upgrade_all, read_events, scan_lan_deep, security_snapshot, snapshot_connections,
+    sysinfo_card, tcp_port_check, ConnectionSnapshot, FileEntry, LanDevice, LogEvent, Monitor,
+    NetworkInfo, Package, PackageActionResult, PhysicalDisk, PortCheckResult, Presence,
+    PresenceDevice, ProcessInfo, SecuritySnapshot, Sighting, SysinfoCard, SystemSnapshot,
 };
 use tauri::State;
 use terminal::Terminals;
@@ -31,6 +31,10 @@ use terminal::Terminals;
 /// holding the mutex on the async command worker.
 struct AppState {
     monitor: Arc<Mutex<Monitor>>,
+    /// Presence DB — persistent LAN device registry. `None` if the on-disk
+    /// SQLite file couldn't be opened; every command tolerates the None case
+    /// and surfaces an error to the UI rather than crashing.
+    presence: Arc<Option<Presence>>,
 }
 
 /// Lock the shared Monitor, tolerating a poisoned lock. A poisoned mutex just
@@ -248,11 +252,147 @@ async fn port_check(host: String, port: u16, timeout_ms: Option<u64>) -> PortChe
         })
 }
 
+// --- Presence: persistent LAN device registry ------------------------------
+
+#[tauri::command]
+async fn presence_devices(
+    state: State<'_, AppState>,
+) -> Result<Vec<PresenceDevice>, String> {
+    let presence = state.presence.clone();
+    tauri::async_runtime::spawn_blocking(move || match presence.as_ref() {
+        Some(p) => p.list_devices(),
+        None => Err("presence db unavailable".into()),
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn presence_sightings(
+    state: State<'_, AppState>,
+    mac: String,
+    since_ms: u64,
+) -> Result<Vec<Sighting>, String> {
+    let presence = state.presence.clone();
+    tauri::async_runtime::spawn_blocking(move || match presence.as_ref() {
+        Some(p) => p.sightings(&mac, since_ms),
+        None => Err("presence db unavailable".into()),
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Manual "rescan now" trigger for the Presence panel. Runs the deep scan,
+/// records it, and returns the newly-seen MACs so the UI can flash them.
+#[tauri::command]
+async fn presence_rescan(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let presence = state.presence.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let devices = scan_lan_deep();
+        match presence.as_ref() {
+            Some(p) => p.record_scan(&devices),
+            None => Err("presence db unavailable".into()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn presence_set_tag(
+    state: State<'_, AppState>,
+    mac: String,
+    tag: Option<String>,
+) -> Result<(), String> {
+    let presence = state.presence.clone();
+    tauri::async_runtime::spawn_blocking(move || match presence.as_ref() {
+        Some(p) => p.set_tag(&mac, tag.as_deref()),
+        None => Err("presence db unavailable".into()),
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn presence_set_alert(
+    state: State<'_, AppState>,
+    mac: String,
+    on: bool,
+) -> Result<(), String> {
+    let presence = state.presence.clone();
+    tauri::async_runtime::spawn_blocking(move || match presence.as_ref() {
+        Some(p) => p.set_alert(&mac, on),
+        None => Err("presence db unavailable".into()),
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn presence_forget(
+    state: State<'_, AppState>,
+    mac: String,
+) -> Result<(), String> {
+    let presence = state.presence.clone();
+    tauri::async_runtime::spawn_blocking(move || match presence.as_ref() {
+        Some(p) => p.forget(&mac),
+        None => Err("presence db unavailable".into()),
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Background auto-rescan. Runs immediately at startup, then every 5 minutes.
+/// Best-effort: any failure is logged and swallowed so the loop keeps ticking.
+fn spawn_presence_scanner(presence: Arc<Option<Presence>>) {
+    if presence.is_none() {
+        eprintln!("[presence] db unavailable; auto-rescan disabled");
+        return;
+    }
+    tauri::async_runtime::spawn(async move {
+        let period = std::time::Duration::from_secs(300);
+        loop {
+            let p = presence.clone();
+            let _ = tauri::async_runtime::spawn_blocking(move || {
+                let devices = scan_lan_deep();
+                if let Some(db) = p.as_ref() {
+                    match db.record_scan(&devices) {
+                        Ok(new_macs) if !new_macs.is_empty() => {
+                            eprintln!(
+                                "[presence] {} device(s) seen for the first time",
+                                new_macs.len()
+                            );
+                        }
+                        Ok(_) => {}
+                        Err(e) => eprintln!("[presence] record_scan failed: {e}"),
+                    }
+                }
+            })
+            .await;
+            tokio::time::sleep(period).await;
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let presence = match Presence::open_default() {
+        Ok(p) => Arc::new(Some(p)),
+        Err(e) => {
+            eprintln!("[presence] could not open DB: {e}");
+            Arc::new(None)
+        }
+    };
+    let presence_for_scanner = presence.clone();
+
     tauri::Builder::default()
+        .setup(move |_app| {
+            spawn_presence_scanner(presence_for_scanner.clone());
+            Ok(())
+        })
         .manage(AppState {
             monitor: Arc::new(Mutex::new(Monitor::new())),
+            presence,
         })
         .manage(Terminals::default())
         .invoke_handler(tauri::generate_handler![
@@ -283,6 +423,12 @@ pub fn run() {
             terminal::terminal_write,
             terminal::terminal_resize,
             terminal::terminal_close,
+            presence_devices,
+            presence_sightings,
+            presence_rescan,
+            presence_set_tag,
+            presence_set_alert,
+            presence_forget,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Raspberry Hub window");

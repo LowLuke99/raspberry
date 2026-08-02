@@ -7,6 +7,7 @@ mod logs;
 mod net;
 mod net_connections;
 mod packages;
+mod presence;
 mod process;
 mod security;
 mod stats;
@@ -27,6 +28,7 @@ pub use packages::{
     uninstall as packages_uninstall, upgrade as packages_upgrade,
     upgrade_all as packages_upgrade_all, Package, PackageActionResult,
 };
+pub use presence::{Presence, PresenceDevice, Sighting};
 pub use process::{kill_process, list_processes, ProcessInfo};
 pub use security::{
     security_snapshot, BitlockerVolume, DefenderStatus, FirewallProfile, HotFix, SecuritySnapshot,
