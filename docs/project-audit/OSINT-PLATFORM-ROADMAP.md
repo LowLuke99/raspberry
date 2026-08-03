@@ -327,6 +327,18 @@ docs/
   osint-providers.md     # NEW — inventory of provider modules
 ```
 
+## 6b. Decisions locked in 2026-08-02
+
+- **Next phase = Workflow engine + Entity Graph.** Build the DAG executor
+  first (linear chains, then the reactflow graph), so every future OSINT
+  vertical inherits composability. Do NOT ship IP/Threat/Web verticals in
+  parallel until the engine is real.
+- **Active-recon consent gate: OFF.** Item #18 in §3 is dropped. Nmap /
+  Masscan / Nikto wrappers will ship without the per-target authorization
+  modal. Rationale: single-operator use; the friction isn't worth it for
+  Papa Luke's own infrastructure. The `active: true` flag on manifests
+  stays (useful for future filtering / display), but nothing gates on it.
+
 ## 7. Rollout Sequence
 
 The above is not "do all of it before shipping". Suggested phase mapping:
