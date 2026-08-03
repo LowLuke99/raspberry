@@ -3,6 +3,7 @@
 //! the process table, and file browsing against the local machine.
 
 mod files;
+mod keystore;
 mod logs;
 mod net;
 mod net_connections;
@@ -16,6 +17,7 @@ mod sysinfo_card;
 mod winshell;
 
 pub use files::{home_dir, list_dir, list_roots, FileEntry};
+pub use keystore::{KeyProvider, KeyStatus, Keystore, KeystoreError};
 pub use logs::{read_events, LogEvent};
 pub use net::{
     network_info, scan_lan, scan_lan_deep, tcp_port_check, wake_on_lan, LanDevice, NetInterface,

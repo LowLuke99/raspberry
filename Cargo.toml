@@ -3,7 +3,7 @@
 # a future Agent binary (apps/agent) joins here and reuses `core`.
 [workspace]
 resolver = "2"
-members = ["apps/hub/src-tauri", "apps/agent", "crates/core"]
+members = ["apps/hub/src-tauri", "apps/agent", "crates/core", "crates/osint-domain"]
 
 [workspace.package]
 version = "0.7.1"

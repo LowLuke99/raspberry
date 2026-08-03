@@ -1,0 +1,20 @@
+[package]
+name = "raspberry-osint-domain"
+description = "OSINT domain-intelligence providers: WHOIS/RDAP, DNS, Certificate Transparency, tech fingerprinting."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+name = "raspberry_osint_domain"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+async-trait = "0.1"
+thiserror = "1"
+tokio = { version = "1", features = ["rt", "macros", "time"] }
+reqwest = { version = "0.12", features = ["json", "gzip", "rustls-tls"], default-features = false }
+hickory-resolver = "0.24"
+url = "2"

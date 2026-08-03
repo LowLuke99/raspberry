@@ -19,9 +19,10 @@ use raspberry_core::{
     home_dir, list_dir, list_physical_disks, list_roots, packages_install, packages_list_installed,
     packages_list_upgradable, packages_search, packages_uninstall, packages_upgrade,
     packages_upgrade_all, read_events, scan_lan_deep, security_snapshot, snapshot_connections,
-    sysinfo_card, tcp_port_check, ConnectionSnapshot, FileEntry, LanDevice, LogEvent, Monitor,
-    NetworkInfo, Package, PackageActionResult, PhysicalDisk, PortCheckResult, Presence,
-    PresenceDevice, ProcessInfo, SecuritySnapshot, Sighting, SysinfoCard, SystemSnapshot,
+    sysinfo_card, tcp_port_check, ConnectionSnapshot, FileEntry, KeyProvider, KeyStatus, Keystore,
+    LanDevice, LogEvent, Monitor, NetworkInfo, Package, PackageActionResult, PhysicalDisk,
+    PortCheckResult, Presence, PresenceDevice, ProcessInfo, SecuritySnapshot, Sighting,
+    SysinfoCard, SystemSnapshot,
 };
 use tauri::State;
 use terminal::Terminals;
@@ -35,6 +36,10 @@ struct AppState {
     /// SQLite file couldn't be opened; every command tolerates the None case
     /// and surfaces an error to the UI rather than crashing.
     presence: Arc<Option<Presence>>,
+    /// Encrypted API-key vault, backed by Windows Credential Manager. The
+    /// raw values NEVER cross the Tauri boundary — the frontend only sees
+    /// presence booleans via `keystore_status`.
+    keystore: Arc<Keystore>,
 }
 
 /// Lock the shared Monitor, tolerating a poisoned lock. A poisoned mutex just
@@ -342,6 +347,86 @@ async fn presence_forget(
     .map_err(|e| e.to_string())?
 }
 
+// ---- Keystore -------------------------------------------------------------
+//
+// Presence + write-only surface. The raw secret NEVER returns to the
+// frontend — outbound requests that need a key are made from Rust, with the
+// key fetched via `Keystore::read_key` at request time.
+
+#[tauri::command]
+async fn keystore_status(state: State<'_, AppState>) -> Result<Vec<KeyStatus>, String> {
+    let ks = state.keystore.clone();
+    tauri::async_runtime::spawn_blocking(move || ks.status_all())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn keystore_write(
+    state: State<'_, AppState>,
+    provider: KeyProvider,
+    value: String,
+) -> Result<(), String> {
+    let ks = state.keystore.clone();
+    tauri::async_runtime::spawn_blocking(move || ks.write_key(provider, &value))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+}
+
+// ---- Domain Intel ---------------------------------------------------------
+//
+// Passive OSINT — WHOIS/RDAP + DNS + Certificate Transparency in one call.
+// The three providers run in parallel; a failure in one doesn't abort the
+// others. Each `Finding` is serialized straight through to the frontend.
+
+use raspberry_osint_domain::{
+    ct_logs::CtLogsProvider, dns::DnsProvider, rdap::RdapProvider, DomainProvider, Finding,
+};
+
+#[derive(serde::Serialize)]
+struct DomainIntelReport {
+    domain: String,
+    findings: Vec<Finding>,
+    errors: Vec<String>,
+}
+
+#[tauri::command]
+async fn domain_intel(domain: String) -> Result<DomainIntelReport, String> {
+    let d = domain.trim().to_string();
+    if d.is_empty() {
+        return Err("domain is empty".into());
+    }
+
+    let dns = DnsProvider::new();
+    let rdap = RdapProvider::new();
+    let ct = CtLogsProvider::new();
+
+    let (r_dns, r_rdap, r_ct) = tokio::join!(
+        dns.lookup(&d),
+        rdap.lookup(&d),
+        ct.lookup(&d),
+    );
+
+    let mut findings = Vec::new();
+    let mut errors = Vec::new();
+
+    match r_dns {
+        Ok(mut f) => findings.append(&mut f),
+        Err(e) => errors.push(format!("dns: {e}")),
+    }
+    match r_rdap {
+        Ok(mut f) => findings.append(&mut f),
+        Err(e) => errors.push(format!("rdap: {e}")),
+    }
+    match r_ct {
+        Ok(mut f) => findings.append(&mut f),
+        Err(e) => errors.push(format!("ct-logs: {e}")),
+    }
+
+    Ok(DomainIntelReport { domain: d, findings, errors })
+}
+
 /// Background auto-rescan. Runs immediately at startup, then every 5 minutes.
 /// Best-effort: any failure is logged and swallowed so the loop keeps ticking.
 fn spawn_presence_scanner(presence: Arc<Option<Presence>>) {
@@ -393,6 +478,7 @@ pub fn run() {
         .manage(AppState {
             monitor: Arc::new(Mutex::new(Monitor::new())),
             presence,
+            keystore: Arc::new(Keystore::new()),
         })
         .manage(Terminals::default())
         .invoke_handler(tauri::generate_handler![
@@ -429,6 +515,9 @@ pub fn run() {
             presence_set_tag,
             presence_set_alert,
             presence_forget,
+            domain_intel,
+            keystore_status,
+            keystore_write,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Raspberry Hub window");

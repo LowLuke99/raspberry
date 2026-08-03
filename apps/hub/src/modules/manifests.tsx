@@ -24,7 +24,14 @@ import {
   Ghost,
   type LucideIcon,
 } from "lucide-react";
-import type { ModuleManifest } from "./types";
+import type {
+  ModuleManifest,
+  ModuleCategory,
+  PluginCapability,
+  PluginPermission,
+  EntityKind,
+  ApiKeyProvider,
+} from "./types";
 import { ModulePlaceholder } from "@/ui/ModulePlaceholder";
 import { SystemMonitorPanel } from "./system-monitor/SystemMonitorPanel";
 import { ProcessExplorerPanel } from "./process-explorer/ProcessExplorerPanel";
@@ -48,6 +55,7 @@ import { SysinfoCardPanel } from "./sysinfo-card/SysinfoCardPanel";
 import { WatchtowerPanel } from "./watchtower/WatchtowerPanel";
 import { PersonasPanel } from "./personas/PersonasPanel";
 import { PresencePanel } from "./presence/PresencePanel";
+import { DomainIntelPanel } from "./domain-intel/DomainIntelPanel";
 
 /**
  * Factory for a Phase 1 module: a manifest whose panel is the shared
@@ -63,6 +71,17 @@ function defineModule(input: {
   section?: ModuleManifest["section"];
   keywords?: string[];
   Component?: ModuleManifest["Component"];
+  // ---- Plugin manifest v2 (optional; unset = defaults preserve v1) --------
+  category?: ModuleCategory;
+  capabilities?: PluginCapability[];
+  permissions?: PluginPermission[];
+  dependencies?: string[];
+  outputSchema?: EntityKind[];
+  inputSchema?: EntityKind[];
+  defaultEnabled?: boolean;
+  apiKeys?: ApiKeyProvider[];
+  active?: boolean;
+  version?: string;
 }): ModuleManifest {
   return {
     id: input.id,
@@ -73,6 +92,16 @@ function defineModule(input: {
     section: input.section ?? "core",
     Component: input.Component ?? ModulePlaceholder,
     ...(input.keywords ? { keywords: input.keywords } : {}),
+    ...(input.category ? { category: input.category } : {}),
+    ...(input.capabilities ? { capabilities: input.capabilities } : {}),
+    ...(input.permissions ? { permissions: input.permissions } : {}),
+    ...(input.dependencies ? { dependencies: input.dependencies } : {}),
+    ...(input.outputSchema ? { outputSchema: input.outputSchema } : {}),
+    ...(input.inputSchema ? { inputSchema: input.inputSchema } : {}),
+    ...(input.defaultEnabled !== undefined ? { defaultEnabled: input.defaultEnabled } : {}),
+    ...(input.apiKeys ? { apiKeys: input.apiKeys } : {}),
+    ...(input.active !== undefined ? { active: input.active } : {}),
+    ...(input.version ? { version: input.version } : {}),
   };
 }
 
@@ -89,6 +118,7 @@ export const moduleManifests: ModuleManifest[] = [
     section: "deck",
     keywords: ["fleet", "machines", "grid", "overview", "home", "dashboard"],
     Component: CommandDeckPanel,
+    category: "system",
   }),
   defineModule({
     id: "terminal",
@@ -97,6 +127,8 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Tabbed PowerShell / CMD / WSL — real shells.",
     keywords: ["terminal", "shell", "powershell", "cmd", "wsl", "console"],
     Component: TerminalPanel,
+    category: "system",
+    permissions: ["shell.execute", "process.spawn"],
   }),
   defineModule({
     id: "commands",
@@ -114,6 +146,7 @@ export const moduleManifests: ModuleManifest[] = [
       "windows",
     ],
     Component: CommandsPanel,
+    category: "utilities",
   }),
   defineModule({
     id: "packages",
@@ -131,6 +164,8 @@ export const moduleManifests: ModuleManifest[] = [
       "scoop",
     ],
     Component: PackagesPanel,
+    category: "system",
+    permissions: ["shell.execute", "process.spawn"],
   }),
   defineModule({
     id: "sysinfo-card",
@@ -149,6 +184,8 @@ export const moduleManifests: ModuleManifest[] = [
       "about",
     ],
     Component: SysinfoCardPanel,
+    category: "system",
+    capabilities: ["system-inspection"],
   }),
   defineModule({
     id: "tweaks",
@@ -166,6 +203,9 @@ export const moduleManifests: ModuleManifest[] = [
       "fix",
     ],
     Component: TweaksPanel,
+    category: "system",
+    capabilities: ["system-control"],
+    permissions: ["shell.execute", "registry.write"],
   }),
   defineModule({
     id: "identity",
@@ -184,6 +224,37 @@ export const moduleManifests: ModuleManifest[] = [
       "gmail",
     ],
     Component: IdentityPanel,
+    category: "identity",
+    capabilities: ["entity-lookup", "passive-recon"],
+    inputSchema: ["email", "username"],
+    outputSchema: ["url", "username"],
+    permissions: ["net.outbound", "process.spawn"],
+  }),
+  defineModule({
+    id: "domain-intel",
+    label: "Domain Intel",
+    icon: Globe,
+    description: "Passive domain OSINT — WHOIS/RDAP, DNS, Certificate Transparency in one shot.",
+    keywords: [
+      "domain",
+      "whois",
+      "rdap",
+      "dns",
+      "crt.sh",
+      "certificate",
+      "subdomain",
+      "osint",
+      "recon",
+      "mx",
+      "ns",
+      "txt",
+    ],
+    Component: DomainIntelPanel,
+    category: "osint",
+    capabilities: ["entity-lookup", "passive-recon"],
+    inputSchema: ["domain"],
+    outputSchema: ["ip", "subdomain", "domain", "email"],
+    permissions: ["net.outbound"],
   }),
   defineModule({
     id: "personas",
@@ -207,6 +278,8 @@ export const moduleManifests: ModuleManifest[] = [
       "credit card",
     ],
     Component: PersonasPanel,
+    category: "identity",
+    capabilities: ["automation"],
   }),
   defineModule({
     id: "localsend",
@@ -215,6 +288,8 @@ export const moduleManifests: ModuleManifest[] = [
     description: "LAN file transfer — AirDrop for every OS, no cloud.",
     keywords: ["localsend", "airdrop", "send", "file", "transfer", "lan", "share"],
     Component: LocalSendPanel,
+    category: "network",
+    permissions: ["net.lan", "fs.read", "fs.write"],
   }),
   defineModule({
     id: "kernel-inspector",
@@ -232,6 +307,8 @@ export const moduleManifests: ModuleManifest[] = [
       "advanced",
     ],
     Component: KernelInspectorPanel,
+    category: "system",
+    capabilities: ["system-inspection"],
   }),
   defineModule({
     id: "system-monitor",
@@ -240,6 +317,8 @@ export const moduleManifests: ModuleManifest[] = [
     description: "CPU, RAM, disk, network — live.",
     keywords: ["cpu", "gpu", "ram", "temps", "fans", "resources"],
     Component: SystemMonitorPanel,
+    category: "system",
+    capabilities: ["system-inspection"],
   }),
   defineModule({
     id: "process-explorer",
@@ -248,6 +327,9 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Process list, resource usage, kill.",
     keywords: ["processes", "kill", "pid", "threads", "priority"],
     Component: ProcessExplorerPanel,
+    category: "system",
+    capabilities: ["system-inspection", "system-control"],
+    permissions: ["process.kill"],
   }),
   defineModule({
     id: "network",
@@ -256,6 +338,8 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Local IP, gateway, interfaces (MAC + IPv4).",
     keywords: ["ip", "dns", "ping", "traceroute", "bandwidth", "wifi"],
     Component: NetworkPanel,
+    category: "network",
+    capabilities: ["system-inspection"],
   }),
   defineModule({
     id: "lan-manager",
@@ -264,6 +348,11 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Discover devices (ARP), vendor lookup, Wake-on-LAN.",
     keywords: ["discover", "devices", "mac", "wol", "map", "oui"],
     Component: LanManagerPanel,
+    category: "network",
+    capabilities: ["active-recon"],
+    outputSchema: ["ip"],
+    permissions: ["net.lan"],
+    active: true,
   }),
   defineModule({
     id: "presence",
@@ -285,6 +374,10 @@ export const moduleManifests: ModuleManifest[] = [
       "wifi",
     ],
     Component: PresencePanel,
+    category: "network",
+    capabilities: ["passive-recon"],
+    outputSchema: ["ip"],
+    permissions: ["net.lan"],
   }),
   defineModule({
     id: "ssh",
@@ -292,6 +385,7 @@ export const moduleManifests: ModuleManifest[] = [
     icon: SquareTerminal,
     description: "Saved servers, keys, one-click connect, sessions.",
     keywords: ["ssh", "servers", "keys", "remote", "terminal"],
+    category: "network",
   }),
   defineModule({
     id: "files",
@@ -300,6 +394,8 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Browse the local tree — folders, sizes, drives.",
     keywords: ["files", "explorer", "rename", "hash", "transfer"],
     Component: FilesPanel,
+    category: "utilities",
+    permissions: ["fs.read"],
   }),
   defineModule({
     id: "storage",
@@ -308,6 +404,8 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Volumes + physical disks — SSD/HDD/USB, health, capacity.",
     keywords: ["disk", "storage", "smart", "volume", "ssd", "hdd", "nvme"],
     Component: StoragePanel,
+    category: "system",
+    capabilities: ["system-inspection"],
   }),
   defineModule({
     id: "dev-toolbox",
@@ -329,6 +427,7 @@ export const moduleManifests: ModuleManifest[] = [
       "unix time",
     ],
     Component: DevToolboxPanel,
+    category: "utilities",
   }),
   defineModule({
     id: "automation",
@@ -336,6 +435,7 @@ export const moduleManifests: ModuleManifest[] = [
     icon: Workflow,
     description: "Saved commands, scripts, scheduler, workflow builder.",
     keywords: ["scripts", "macros", "scheduler", "workflow", "tasks"],
+    category: "automation",
   }),
   defineModule({
     id: "watchtower",
@@ -358,6 +458,8 @@ export const moduleManifests: ModuleManifest[] = [
       "traffic",
     ],
     Component: WatchtowerPanel,
+    category: "network",
+    capabilities: ["system-inspection"],
   }),
   defineModule({
     id: "security",
@@ -366,6 +468,8 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Defender, firewall, BitLocker, UAC, updates — posture score.",
     keywords: ["defender", "firewall", "bitlocker", "audit", "updates", "uac", "posture"],
     Component: SecurityPanel,
+    category: "system",
+    capabilities: ["system-inspection"],
   }),
   defineModule({
     id: "graphs",
@@ -374,6 +478,8 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Live charts — CPU, memory, network.",
     keywords: ["charts", "graphs", "live", "metrics", "overlay"],
     Component: GraphsPanel,
+    category: "system",
+    capabilities: ["system-inspection"],
   }),
   defineModule({
     id: "logs",
@@ -382,5 +488,7 @@ export const moduleManifests: ModuleManifest[] = [
     description: "Windows Event Log — System, Application, Security.",
     keywords: ["logs", "events", "eventvwr", "history", "search", "filter", "winevent"],
     Component: LogsPanel,
+    category: "system",
+    capabilities: ["system-inspection"],
   }),
 ];
