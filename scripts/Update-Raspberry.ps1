@@ -5,22 +5,51 @@
 #      -> no console window, just the dark WinForms dialog
 #   2. Debug mode: right-click .ps1 -> Run with PowerShell (console + dialog)
 #
-# Pipeline: close running app -> git pull -> npm install if deps changed ->
-# tauri build -> launch fresh raspberry-hub.exe. Every step reports into the
+# Pipeline: single-instance lock -> close running app -> git pull ->
+# npm install if deps changed -> tauri build --no-bundle -> refresh
+# shortcuts -> launch fresh raspberry-hub.exe. Every step reports into the
 # UI so the user sees progress instead of a mysterious silent process.
 #
 # NOTE: this file is intentionally pure ASCII. PowerShell 5.1 reads .ps1
 # files in the system ANSI codepage, which mangles unicode em-dashes /
 # arrows and turns them into parse errors. Keep it ASCII forever.
 
-$ErrorActionPreference = "Stop"
+# Deliberately NOT "Stop": with $ErrorActionPreference = Stop, any git
+# warning line (LF/CRLF conversion, detached HEAD, etc.) written to
+# stderr becomes a NativeCommandError that gets caught by the outer
+# try/catch and reported as "git pull failed" even though git exited 0.
+# We check $LASTEXITCODE explicitly instead.
+$ErrorActionPreference = "Continue"
+
 $RepoRoot   = Split-Path $PSScriptRoot -Parent
 $ExePath    = Join-Path $RepoRoot "target\release\raspberry-hub.exe"
 $LogFile    = Join-Path $RepoRoot "update.log"
 $IconPath   = Join-Path $RepoRoot "apps\hub\src-tauri\icons\icon.ico"
+$LockFile   = Join-Path $env:TEMP "raspberry-updater.lock"
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+
+# --- single-instance lock ---------------------------------------------------
+# Prevents a double-click on the "Update Raspberry" shortcut from spawning
+# two concurrent updaters that race on the exe + temp build log.
+$lockStream = $null
+try {
+  $lockStream = [System.IO.File]::Open(
+    $LockFile,
+    [System.IO.FileMode]::OpenOrCreate,
+    [System.IO.FileAccess]::ReadWrite,
+    [System.IO.FileShare]::None
+  )
+} catch {
+  [System.Windows.Forms.MessageBox]::Show(
+    "Another Raspberry updater is already running.`n`nWait for it to finish, or delete:`n$LockFile",
+    "Raspberry Updater",
+    [System.Windows.Forms.MessageBoxButtons]::OK,
+    [System.Windows.Forms.MessageBoxIcon]::Information
+  ) | Out-Null
+  exit 0
+}
 
 # --- UI ---------------------------------------------------------------------
 
@@ -85,6 +114,16 @@ $form.Show()
 $form.Activate()
 [System.Windows.Forms.Application]::DoEvents()
 
+function Release-Lock {
+  if ($script:lockStream) {
+    try { $script:lockStream.Close(); $script:lockStream.Dispose() } catch { }
+    $script:lockStream = $null
+  }
+  if (Test-Path $LockFile) {
+    try { Remove-Item $LockFile -Force -ErrorAction SilentlyContinue } catch { }
+  }
+}
+
 function Set-Step {
   param([string]$Caption)
   $sub.Text = $Caption
@@ -109,21 +148,68 @@ function Fail-With {
   $progress.Value = 0
   $closeBtn.Enabled = $true
   Add-Content -Path $LogFile -Value "[$(Get-Date -Format o)] FAIL: $Msg"
+  Release-Lock
   [System.Windows.Forms.Application]::Run($form)
   exit 1
+}
+
+# Run a native command, capture stdout+stderr to files, return exit code.
+# Avoids the PowerShell 5.1 "stderr becomes NativeCommandError" trap that
+# breaks 2>&1 when $ErrorActionPreference is Stop.
+function Invoke-Native {
+  param(
+    [string]$File,
+    [string[]]$Args,
+    [string]$WorkDir = $null
+  )
+  $stdoutFile = New-TemporaryFile
+  $stderrFile = New-TemporaryFile
+  try {
+    $psi = @{
+      FilePath              = $File
+      ArgumentList          = $Args
+      NoNewWindow           = $true
+      Wait                  = $true
+      PassThru              = $true
+      RedirectStandardOutput = $stdoutFile.FullName
+      RedirectStandardError  = $stderrFile.FullName
+    }
+    if ($WorkDir) { $psi.WorkingDirectory = $WorkDir }
+    $proc = Start-Process @psi
+    return [pscustomobject]@{
+      ExitCode = $proc.ExitCode
+      Stdout   = (Get-Content $stdoutFile.FullName -Raw -ErrorAction SilentlyContinue)
+      Stderr   = (Get-Content $stderrFile.FullName -Raw -ErrorAction SilentlyContinue)
+    }
+  } finally {
+    Remove-Item $stdoutFile.FullName -Force -ErrorAction SilentlyContinue
+    Remove-Item $stderrFile.FullName -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Stop-RaspberryProcesses {
+  # Politely close windows first, then force-kill anything still standing.
+  # Retry the force-kill loop until nothing is running or we hit the cap;
+  # tauri build's WiX packaging is sensitive to a still-locked exe.
+  Get-Process -Name "raspberry-hub","Raspberry" -ErrorAction SilentlyContinue | ForEach-Object {
+    try { $_.CloseMainWindow() | Out-Null } catch { }
+  }
+  Start-Sleep -Milliseconds 600
+  for ($i = 0; $i -lt 10; $i++) {
+    $running = Get-Process -Name "raspberry-hub","Raspberry" -ErrorAction SilentlyContinue
+    if (-not $running) { return }
+    $running | ForEach-Object {
+      try { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue } catch { }
+    }
+    Start-Sleep -Milliseconds 300
+  }
 }
 
 # --- pipeline ---------------------------------------------------------------
 
 try {
   Set-Step "Closing any running Raspberry window"
-  Get-Process -Name "raspberry-hub","Raspberry" -ErrorAction SilentlyContinue | ForEach-Object {
-    try { $_.CloseMainWindow() | Out-Null } catch { }
-  }
-  Start-Sleep -Milliseconds 800
-  Get-Process -Name "raspberry-hub","Raspberry" -ErrorAction SilentlyContinue | ForEach-Object {
-    try { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue } catch { }
-  }
+  Stop-RaspberryProcesses
 
   if (-not (Test-Path $RepoRoot)) { Fail-With "Repo missing: $RepoRoot" }
   Set-Location $RepoRoot
@@ -138,44 +224,75 @@ try {
     return $h
   }
   $depsBefore = Get-DepsHash
+  $headBefore = (Invoke-Native -File "git" -Args @("rev-parse","HEAD") -WorkDir $RepoRoot).Stdout.Trim()
 
   Set-Step "Pulling latest from GitHub"
-  # Auto-stash any local edits so a fast-forward pull can't be blocked by a
-  # dirty tree. Recovers gracefully from "your local changes would be
-  # overwritten" instead of dying on the user.
-  $dirty = (& git status --porcelain 2>&1) -join ""
+
+  # Auto-stash any real local edits so a fast-forward pull can't be blocked
+  # by a dirty tree. Uses porcelain output (no warnings) to decide.
+  $statusRes = Invoke-Native -File "git" -Args @("status","--porcelain") -WorkDir $RepoRoot
   $stashed = $false
-  if ($dirty) {
+  if ($statusRes.Stdout -and $statusRes.Stdout.Trim()) {
     Set-Status "Local changes detected - stashing before pull."
-    & git stash push -u -m "raspberry-updater auto-stash $(Get-Date -Format o)" 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) { $stashed = $true }
-  }
-  $pullOut = & git pull --ff-only 2>&1
-  if ($LASTEXITCODE -ne 0) {
-    if ($stashed) { & git stash pop 2>&1 | Out-Null }
-    Fail-With "git pull failed: $($pullOut -join '; ')"
-  }
-  if ($stashed) {
-    & git stash pop 2>&1 | Out-Null
-    Set-Status "Local changes restored on top of the pull."
-  } else {
-    $tail = ($pullOut | Select-Object -Last 3 | Out-String).Trim()
-    if ($tail) { Set-Status $tail }
+    $stashRes = Invoke-Native -File "git" `
+      -Args @("stash","push","-u","-m","raspberry-updater auto-stash $(Get-Date -Format o)") `
+      -WorkDir $RepoRoot
+    if ($stashRes.ExitCode -eq 0 -and $stashRes.Stdout -notmatch "No local changes to save") {
+      $stashed = $true
+    }
   }
 
+  $pullRes = Invoke-Native -File "git" -Args @("pull","--ff-only") -WorkDir $RepoRoot
+  if ($pullRes.ExitCode -ne 0) {
+    if ($stashed) {
+      Invoke-Native -File "git" -Args @("stash","pop") -WorkDir $RepoRoot | Out-Null
+    }
+    $errMsg = if ($pullRes.Stderr) { $pullRes.Stderr.Trim() } else { $pullRes.Stdout.Trim() }
+    Fail-With "git pull failed (exit $($pullRes.ExitCode)): $errMsg"
+  }
+  if ($stashed) {
+    Invoke-Native -File "git" -Args @("stash","pop") -WorkDir $RepoRoot | Out-Null
+    Set-Status "Local changes restored on top of the pull."
+  } else {
+    $pullMsg = ($pullRes.Stdout + "`n" + $pullRes.Stderr).Trim()
+    if ($pullMsg) {
+      $tail = (($pullMsg -split "`n") | Where-Object { $_ -notmatch "^warning:" } | Select-Object -Last 3 | Out-String).Trim()
+      if ($tail) { Set-Status $tail }
+    }
+  }
+
+  $headAfter = (Invoke-Native -File "git" -Args @("rev-parse","HEAD") -WorkDir $RepoRoot).Stdout.Trim()
   $depsAfter = Get-DepsHash
+
+  # Fast path: nothing changed AND the exe already exists -> just launch.
+  if ($headBefore -eq $headAfter -and $depsBefore -eq $depsAfter -and (Test-Path $ExePath)) {
+    Set-Step "Already up to date - launching"
+    Set-Status "No new commits. Launching current build."
+    Start-Process -FilePath $ExePath
+    $progress.Style = "Blocks"
+    $progress.Value = 100
+    $closeBtn.Enabled = $true
+    $autoclose = New-Object System.Windows.Forms.Timer
+    $autoclose.Interval = 2000
+    $autoclose.Add_Tick({ $autoclose.Stop(); $form.Close() })
+    $autoclose.Start()
+    [System.Windows.Forms.Application]::Run($form)
+    Release-Lock
+    exit 0
+  }
+
   if ($depsBefore -ne $depsAfter) {
     Set-Step "Dependencies changed - running npm install"
-    & npm install --no-audit --no-fund 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { Fail-With "npm install failed" }
+    $npmRes = Invoke-Native -File "npm" -Args @("install","--no-audit","--no-fund") -WorkDir $RepoRoot
+    if ($npmRes.ExitCode -ne 0) {
+      Fail-With "npm install failed (exit $($npmRes.ExitCode)): $($npmRes.Stderr.Trim())"
+    }
   } else {
     Set-Status "Dependencies unchanged."
   }
 
   # Back the current exe up before overwriting. If the build fails we
-  # restore it so the user always has a working copy to launch, even after
-  # a broken pull. The .bak lives next to the exe (same drive, atomic
-  # rename on same-volume Move-Item).
+  # restore it so the user always has a working copy to launch.
   $BackupPath = "$ExePath.bak"
   $backedUp = $false
   if (Test-Path $ExePath) {
@@ -187,13 +304,20 @@ try {
     }
   }
 
+  # One more kill sweep right before build; a fresh raspberry-hub could have
+  # been spawned in the window between the initial kill and now.
+  Stop-RaspberryProcesses
+
   Set-Step "Building Raspberry (Rust compile - first build can take several minutes)"
-  $buildLog = Join-Path $env:TEMP "raspberry-update-build.log"
-  if (Test-Path $buildLog) { Remove-Item $buildLog -Force }
+  $buildLog = Join-Path $env:TEMP "raspberry-update-build-$PID.log"
+  if (Test-Path $buildLog) { Remove-Item $buildLog -Force -ErrorAction SilentlyContinue }
 
   $psi = New-Object System.Diagnostics.ProcessStartInfo
   $psi.FileName  = "cmd.exe"
-  $psi.Arguments = "/c npm run tauri:build > `"$buildLog`" 2>&1"
+  # --no-bundle: skip WiX MSI packaging. It's slow and its `light.exe` step
+  # locks target\release\raspberry-hub.exe, which is the exact cascade that
+  # blew up prior update runs. We only need the exe for local use.
+  $psi.Arguments = "/c npm run tauri:build:fast > `"$buildLog`" 2>&1"
   $psi.WorkingDirectory = $RepoRoot
   $psi.WindowStyle = "Hidden"
   $psi.CreateNoWindow = $true
@@ -210,11 +334,11 @@ try {
   }
   if ($proc.ExitCode -ne 0) {
     $tailLog = ""
-    if (Test-Path $buildLog) { $tailLog = (Get-Content $buildLog -Tail 10 | Out-String).Trim() }
+    if (Test-Path $buildLog) { $tailLog = (Get-Content $buildLog -Tail 15 | Out-String).Trim() }
     if ($backedUp) {
       try {
         Copy-Item -Path $BackupPath -Destination $ExePath -Force
-        Fail-With "Build failed (exit $($proc.ExitCode)). Previous exe restored from .bak.`n$tailLog"
+        Fail-With "Build failed (exit $($proc.ExitCode)). Previous exe restored.`n$tailLog"
       } catch {
         Fail-With "Build failed (exit $($proc.ExitCode)) AND rollback failed: $_`n$tailLog"
       }
@@ -226,14 +350,13 @@ try {
   if (-not (Test-Path $ExePath)) {
     if ($backedUp) {
       Copy-Item -Path $BackupPath -Destination $ExePath -Force -ErrorAction SilentlyContinue
-      Fail-With "Build finished but exe missing at:`n$ExePath`n(Previous exe restored from .bak.)"
+      Fail-With "Build finished but exe missing at:`n$ExePath`n(Previous exe restored.)"
     }
     Fail-With "Build finished but exe missing at:`n$ExePath"
   }
 
   # Refresh desktop + Start Menu shortcuts so they always point at the freshly
-  # built exe (safe to re-run; overwrites in place). If the shortcuts install
-  # script is missing for any reason, don't fail the update - just skip.
+  # built exe (safe to re-run). If the shortcut script is missing, skip.
   $shortcutScript = Join-Path $RepoRoot "scripts\Install-Shortcuts.ps1"
   if (Test-Path $shortcutScript) {
     Set-Step "Refreshing desktop shortcuts"
@@ -255,6 +378,7 @@ try {
   $autoclose.Add_Tick({ $autoclose.Stop(); $form.Close() })
   $autoclose.Start()
   [System.Windows.Forms.Application]::Run($form)
+  Release-Lock
 } catch {
   Fail-With "$_"
 }
