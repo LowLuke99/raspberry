@@ -20,6 +20,13 @@ export interface ModuleManifest {
   /** One-line summary shown in the placeholder and palette subtitle. */
   description: string;
   /**
+   * Plain-language explanation shown in the "What is this?" popover on the
+   * page header — for when the one-line description isn't enough context.
+   * Markdown-lite: paragraphs separated by blank lines. Optional; falls back
+   * to `description` when omitted.
+   */
+  learnMore?: string;
+  /**
    * v1 axis (kept for sidebar pinning). `"deck"` pins to the top; `"core"` is
    * the standard tool list. New modules should ALSO set `category` below —
    * `section` remains authoritative for whether the tile lives in the deck.

@@ -72,6 +72,20 @@
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
+  /*
+   * Opt-in scrollbar hider — used by narrow scroll regions where a real bar
+   * eats horizontal space (e.g. the collapsed sidebar rail). Scroll still
+   * works via wheel / touchpad.
+   */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
 }
 
 /* ── Reusable design-system utilities ─────────────────────────── */

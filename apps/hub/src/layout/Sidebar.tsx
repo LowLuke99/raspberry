@@ -31,7 +31,7 @@ export function Sidebar() {
         {/* divider between the Command Deck and the tool list */}
         <div className="my-1 h-px shrink-0 bg-stroke" />
 
-        <div className="flex flex-col gap-1 overflow-y-auto overflow-x-hidden">
+        <div className="no-scrollbar flex flex-col gap-1 overflow-y-auto overflow-x-hidden">
           {core.map((m) => (
             <NavItem key={m.id} manifest={m} />
           ))}

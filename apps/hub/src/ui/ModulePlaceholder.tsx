@@ -1,4 +1,6 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { HelpCircle, X } from "lucide-react";
 import type { ModuleManifest } from "@/modules/types";
 import { GlassPanel } from "./GlassPanel";
 
@@ -9,6 +11,9 @@ import { GlassPanel } from "./GlassPanel";
  */
 export function ModulePlaceholder({ manifest }: { manifest: ModuleManifest }) {
   const Icon = manifest.icon;
+  const [showInfo, setShowInfo] = useState(false);
+  const learn = manifest.learnMore?.trim() || manifest.description;
+  const paragraphs = learn.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
   return (
     <div className="flex h-full w-full flex-col p-6">
       {/* Panel header — module identity. */}
@@ -17,12 +22,59 @@ export function ModulePlaceholder({ manifest }: { manifest: ModuleManifest }) {
           <Icon size={20} strokeWidth={1.75} />
         </div>
         <div>
-          <h1 className="text-[15px] font-semibold tracking-tight text-text">
-            {manifest.label}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[15px] font-semibold tracking-tight text-text">
+              {manifest.label}
+            </h1>
+            <button
+              type="button"
+              onClick={() => setShowInfo((s) => !s)}
+              aria-expanded={showInfo}
+              aria-label="What is this?"
+              title="What is this?"
+              className={
+                "focus-ring grid h-6 w-6 place-items-center rounded-full text-text-dim transition-colors " +
+                (showInfo ? "bg-surface-hi text-raspberry" : "hover:bg-surface-hi hover:text-text")
+              }
+            >
+              <HelpCircle size={13} strokeWidth={2} />
+            </button>
+          </div>
           <p className="text-[12px] text-text-dim">{manifest.description}</p>
         </div>
       </div>
+
+      <AnimatePresence initial={false}>
+        {showInfo && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -4, height: 0 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className="mb-4 overflow-hidden"
+          >
+            <div className="glass relative flex items-start gap-3 border-l-2 border-l-raspberry/60 px-4 py-3">
+              <HelpCircle size={14} className="mt-0.5 shrink-0 text-raspberry" />
+              <div className="min-w-0 flex-1 space-y-2 pr-6 text-[12.5px] leading-relaxed text-text">
+                <div className="text-[11px] uppercase tracking-wider text-text-dim/80">
+                  What is {manifest.label}?
+                </div>
+                {paragraphs.map((p, i) => (
+                  <p key={i}>{p}</p>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInfo(false)}
+                aria-label="Hide info"
+                className="focus-ring absolute right-2 top-2 rounded p-1 text-text-dim hover:text-text"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Empty stage — minimalist law: detail appears in Phase 2. */}
       <GlassPanel
