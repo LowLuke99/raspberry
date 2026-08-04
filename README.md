@@ -40,16 +40,28 @@ That's the whole daily workflow. No terminal needed.
 
 ## What's inside
 
-17 modules across four sections. Full list in
-[docs/MODULES.md](docs/MODULES.md).
+25 modules across four sections. Full list in
+[docs/MODULES.md](docs/MODULES.md). Every page has a "?" info button that
+pops a plain-language explanation of what the module does — for learning
+your way around.
 
-**Shell** — [Terminal](docs/MODULES.md#shell) · Commands · Packages · Sysinfo
-Card · Tweaks · Identity (OSINT) · LocalSend · Kernel Inspector
+**Deck** — the home screen: live vitals + jump grid.
 
-**System** — System Monitor · Process Explorer · Network · LAN Manager ·
-Files · Storage · Security · Graphs · Logs · Toolbox
+**Shell + Learning** — [Terminal](docs/MODULES.md#shell) · Commands ·
+Packages · Sysinfo Card · Tweaks · **Hotkeys** (searchable keyboard
+cheatsheet, 142 shortcuts across Windows / Explorer / browser / VS Code /
+Terminal / PowerToys).
 
-**Deck** — the home screen: live tiles + jump grid
+**OSINT** — Identity (Holehe / Sherlock) · Domain Intel (WHOIS/RDAP + DNS +
+Certificate Transparency).
+
+**Network** — LocalSend · Network · LAN Manager · Presence (persistent LAN
+device history) · **SSH** (saved servers, one-click connect, keygen
+recipes, plain-language SSH intro) · Watchtower (live TCP radar).
+
+**System + utilities** — System Monitor · Process Explorer · Kernel
+Inspector · Files · Storage · Security · Graphs · Logs · Toolbox ·
+Automation.
 
 ---
 
@@ -137,10 +149,34 @@ that fit a LAN control panel:
 Also: **Ctrl+K** now surfaces `Switch to: <machine>` entries for every
 registered agent, so you can retarget without touching the top-bar chip.
 
-**Next: Phase 7.2** — Command Deck sparklines (per-agent CPU/RAM history)
+**Phase 8.2 — Learning surface + SSH + Tweaks catalog boost** ✅ — the
+current pass:
+- **"What is this?" info popover** on every module page. Learning-focused —
+  click the `?` next to the title, get a plain-language explanation of what
+  the module actually does.
+- **Hotkeys** — new searchable keyboard cheatsheet: 142 shortcuts across 8
+  groups (Windows / Explorer / browser / VS Code / Terminal / PowerToys /
+  gaming / text editing). Replaces the old Personas module.
+- **SSH** — built out from placeholder to a real three-tab module:
+  *Servers* (saved connections, one-click Connect hands the built `ssh…`
+  command to the built-in Terminal), *Keys* (ed25519 keygen + agent +
+  copy-to-server recipes), and *Learn SSH* (how a connection works, three
+  ways to log in, common flags cheatsheet).
+- **Tweaks** — catalog roughly doubles from 29 to ~60. New install kits:
+  GitHub power tools (gh, lazygit, delta, Fork), terminal upgrades
+  (Starship, fzf, ripgrep, bat, zoxide), dev runtimes (Node LTS + Python +
+  Rust + Go), containers, AI dev stack (Ollama + LM Studio + Cursor),
+  creators, comms, security suite, PowerToys, Sysinternals suite, notes,
+  browsers, launchers, hardware monitoring, cleaners, network tools,
+  productivity, Nerd Fonts, WSL enable. Plus more debloat / privacy /
+  perf / fix / UI entries.
+- **Sidebar** — collapsed rail no longer clips icons behind a scrollbar
+  gutter.
+
+**Next: Phase 8.3** — Command Deck sparklines (per-agent CPU/RAM history)
 and per-agent Sysinfo Card diff view.
 
-**Then: Phase 8 — hardening** — mTLS transport, per-command allow-listing on
+**Then: Phase 9 — hardening** — mTLS transport, per-command allow-listing on
 the agent, and one-click Windows-service install so the agent survives a
 reboot without a login session.
 

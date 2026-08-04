@@ -156,10 +156,15 @@ function Fail-With {
 # Run a native command, capture stdout+stderr to files, return exit code.
 # Avoids the PowerShell 5.1 "stderr becomes NativeCommandError" trap that
 # breaks 2>&1 when $ErrorActionPreference is Stop.
+#
+# NOTE: the parameter is named $Arguments, not $Args. $Args is a reserved
+# automatic variable in every PowerShell function and the parser strips the
+# `-Args` binding at the call site, silently leaving the parameter empty.
+# That was the "ArgumentList null" crash before this fix.
 function Invoke-Native {
   param(
     [string]$File,
-    [string[]]$Args,
+    [string[]]$Arguments,
     [string]$WorkDir = $null
   )
   $stdoutFile = New-TemporaryFile
@@ -167,12 +172,16 @@ function Invoke-Native {
   try {
     $psi = @{
       FilePath              = $File
-      ArgumentList          = $Args
       NoNewWindow           = $true
       Wait                  = $true
       PassThru              = $true
       RedirectStandardOutput = $stdoutFile.FullName
       RedirectStandardError  = $stderrFile.FullName
+    }
+    # Start-Process refuses a null or empty -ArgumentList. Only pass the key
+    # when the caller actually supplied arguments.
+    if ($Arguments -and $Arguments.Count -gt 0) {
+      $psi.ArgumentList = $Arguments
     }
     if ($WorkDir) { $psi.WorkingDirectory = $WorkDir }
     $proc = Start-Process @psi
@@ -224,34 +233,34 @@ try {
     return $h
   }
   $depsBefore = Get-DepsHash
-  $headBefore = (Invoke-Native -File "git" -Args @("rev-parse","HEAD") -WorkDir $RepoRoot).Stdout.Trim()
+  $headBefore = (Invoke-Native -File "git" -Arguments @("rev-parse","HEAD") -WorkDir $RepoRoot).Stdout.Trim()
 
   Set-Step "Pulling latest from GitHub"
 
   # Auto-stash any real local edits so a fast-forward pull can't be blocked
   # by a dirty tree. Uses porcelain output (no warnings) to decide.
-  $statusRes = Invoke-Native -File "git" -Args @("status","--porcelain") -WorkDir $RepoRoot
+  $statusRes = Invoke-Native -File "git" -Arguments @("status","--porcelain") -WorkDir $RepoRoot
   $stashed = $false
   if ($statusRes.Stdout -and $statusRes.Stdout.Trim()) {
     Set-Status "Local changes detected - stashing before pull."
     $stashRes = Invoke-Native -File "git" `
-      -Args @("stash","push","-u","-m","raspberry-updater auto-stash $(Get-Date -Format o)") `
+      -Arguments @("stash","push","-u","-m","raspberry-updater auto-stash $(Get-Date -Format o)") `
       -WorkDir $RepoRoot
     if ($stashRes.ExitCode -eq 0 -and $stashRes.Stdout -notmatch "No local changes to save") {
       $stashed = $true
     }
   }
 
-  $pullRes = Invoke-Native -File "git" -Args @("pull","--ff-only") -WorkDir $RepoRoot
+  $pullRes = Invoke-Native -File "git" -Arguments @("pull","--ff-only") -WorkDir $RepoRoot
   if ($pullRes.ExitCode -ne 0) {
     if ($stashed) {
-      Invoke-Native -File "git" -Args @("stash","pop") -WorkDir $RepoRoot | Out-Null
+      Invoke-Native -File "git" -Arguments @("stash","pop") -WorkDir $RepoRoot | Out-Null
     }
     $errMsg = if ($pullRes.Stderr) { $pullRes.Stderr.Trim() } else { $pullRes.Stdout.Trim() }
     Fail-With "git pull failed (exit $($pullRes.ExitCode)): $errMsg"
   }
   if ($stashed) {
-    Invoke-Native -File "git" -Args @("stash","pop") -WorkDir $RepoRoot | Out-Null
+    Invoke-Native -File "git" -Arguments @("stash","pop") -WorkDir $RepoRoot | Out-Null
     Set-Status "Local changes restored on top of the pull."
   } else {
     $pullMsg = ($pullRes.Stdout + "`n" + $pullRes.Stderr).Trim()
@@ -261,7 +270,7 @@ try {
     }
   }
 
-  $headAfter = (Invoke-Native -File "git" -Args @("rev-parse","HEAD") -WorkDir $RepoRoot).Stdout.Trim()
+  $headAfter = (Invoke-Native -File "git" -Arguments @("rev-parse","HEAD") -WorkDir $RepoRoot).Stdout.Trim()
   $depsAfter = Get-DepsHash
 
   # Fast path: nothing changed AND the exe already exists -> just launch.
@@ -283,7 +292,7 @@ try {
 
   if ($depsBefore -ne $depsAfter) {
     Set-Step "Dependencies changed - running npm install"
-    $npmRes = Invoke-Native -File "npm" -Args @("install","--no-audit","--no-fund") -WorkDir $RepoRoot
+    $npmRes = Invoke-Native -File "npm" -Arguments @("install","--no-audit","--no-fund") -WorkDir $RepoRoot
     if ($npmRes.ExitCode -ne 0) {
       Fail-With "npm install failed (exit $($npmRes.ExitCode)): $($npmRes.Stderr.Trim())"
     }
