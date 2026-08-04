@@ -273,8 +273,23 @@ try {
   $headAfter = (Invoke-Native -File "git" -Arguments @("rev-parse","HEAD") -WorkDir $RepoRoot).Stdout.Trim()
   $depsAfter = Get-DepsHash
 
-  # Fast path: nothing changed AND the exe already exists -> just launch.
-  if ($headBefore -eq $headAfter -and $depsBefore -eq $depsAfter -and (Test-Path $ExePath)) {
+  # Fast path: nothing changed AND the exe on disk is at least as new as
+  # the current HEAD commit. Comparing this-run's pull delta alone was
+  # brittle — if the user pushed a commit from another shell and then ran
+  # the updater, `$headBefore` already equalled `$headAfter` and we would
+  # skip the build, launching a stale exe. Now we require the exe's mtime
+  # to be at or after the HEAD commit's timestamp.
+  $commitEpoch = 0
+  try {
+    $cts = (Invoke-Native -File "git" -Arguments @("log","-1","--format=%ct","HEAD") -WorkDir $RepoRoot).Stdout.Trim()
+    if ($cts) { $commitEpoch = [int64]$cts }
+  } catch { $commitEpoch = 0 }
+  $exeStale = $true
+  if (Test-Path $ExePath) {
+    $exeEpoch = [int64]((Get-Item $ExePath).LastWriteTimeUtc.Subtract((Get-Date "1970-01-01Z")).TotalSeconds)
+    $exeStale = ($exeEpoch -lt $commitEpoch)
+  }
+  if ($headBefore -eq $headAfter -and $depsBefore -eq $depsAfter -and (Test-Path $ExePath) -and -not $exeStale) {
     Set-Step "Already up to date - launching"
     Set-Status "No new commits. Launching current build."
     Start-Process -FilePath $ExePath
@@ -288,6 +303,9 @@ try {
     [System.Windows.Forms.Application]::Run($form)
     Release-Lock
     exit 0
+  }
+  if ($exeStale) {
+    Set-Status "Build on disk is older than the latest commit - rebuilding."
   }
 
   if ($depsBefore -ne $depsAfter) {
